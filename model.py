@@ -65,7 +65,13 @@ class DeepNN:
         m = Y.shape[1]
 
         # Cross-entropy
-        cost = (1. / m) * (-np.dot(Y, np.log(AL).T) - np.dot(1 - Y, np.log(1 - AL).T))
+        with np.errstate(divide='ignore', invalid='ignore'):
+            # Handle inf in np.log
+            logprobs = np.multiply(-np.log(AL), Y) + np.multiply(-np.log(1 - AL), 1 - Y)
+            logprobs[logprobs == np.inf] = 0
+            logprobs = np.nan_to_num(logprobs)
+
+        cost = 1. / m * np.nansum(logprobs)
         if self.l2_lambda > 0:
             # L2 regularization cost
             L2 = np.sum([np.sum(np.square(self.params['W' + str(l)])) for l in range(len(self.layer_dims))])
@@ -80,9 +86,14 @@ class DeepNN:
     #################
 
     def propagate_backward(self, AL, Y, caches):
+        np.random.seed(1)
         grads = {}
         Y = Y.reshape(AL.shape)
-        dA = -(np.divide(Y, AL) - np.divide(1 - Y, 1 - AL))
+        with np.errstate(divide='ignore', invalid='ignore'):
+            # Handle division by zero in np.divide
+            dA = -(np.divide(Y, AL) - np.divide(1 - Y, 1 - AL))
+            dA[dA == np.inf] = 0
+            dA = np.nan_to_num(dA)
 
         for l in reversed(range(len(self.layer_dims))):
             linear_cache, activation_cache, dropout_cache = caches[l]
@@ -116,22 +127,6 @@ class DeepNN:
     # TRAIN #
     #########
 
-    def train(self, X, Y, print_output=False):
-        self.X = X
-        self.Y = Y
-        self.initialize_params()
-
-        costs = []
-        for i in range(0, self.num_iterations):
-            AL, caches = self.propagate_forward(X)
-            cost = self.compute_cost(AL, Y)
-            grads = self.propagate_backward(AL, Y, caches)
-            self.update_params(grads)
-
-            if print_output and i % 10000 == 0:
-                print("Cost after iteration %i: %f" % (i, cost))
-                costs.append(cost)
-
     def initialize_params(self):
         np.random.seed(3)
         self.params = {}
@@ -150,6 +145,22 @@ class DeepNN:
                 self.params['W' + str(l)] = np.random.randn(this_layer_dim, prev_layer_dim) \
                     * np.sqrt(2. / prev_layer_dim)
             self.params['b' + str(l)] = np.zeros((this_layer_dim, 1))
+
+    def train(self, X, Y, print_output=False):
+        self.X = X
+        self.Y = Y
+        self.initialize_params()
+
+        costs = []
+        for i in range(0, self.num_iterations):
+            AL, caches = self.propagate_forward(X)
+            cost = self.compute_cost(AL, Y)
+            grads = self.propagate_backward(AL, Y, caches)
+            self.update_params(grads)
+
+            if print_output and i % 10000 == 0:
+                print("Cost after iteration %i: %f" % (i, cost))
+                costs.append(cost)
 
     ###########
     # PREDICT #

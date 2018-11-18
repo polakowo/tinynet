@@ -19,8 +19,7 @@ def dropout_backward(dA, dropout_cache, keep_prob):
 
 def relu_backward(dA, activation_cache):
     Z = activation_cache
-    dZ = np.array(dA, copy=True)
-    dZ[Z <= 0] = 0
+    dZ = np.multiply(dA, np.int64(Z > 0))
     assert(dZ.shape == Z.shape)
 
     return dZ

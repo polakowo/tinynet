@@ -1,3 +1,5 @@
+import numpy as np
+
 from model import DeepNN
 from data import load_2D_dataset
 
@@ -16,7 +18,7 @@ hyperparams = {
 dnn = DeepNN(**hyperparams)
 dnn.train(train_X, train_Y, print_output=True)
 
-#_, accuracy = dnn.predict(train_X, train_Y)
-#print("Training accuracy:", accuracy)
-#_, accuracy = dnn.predict(test_X, test_Y)
-#print("Test accuracy:", accuracy)
+_, accuracy = dnn.predict(train_X, train_Y)
+print("Training accuracy:", accuracy)
+_, accuracy = dnn.predict(test_X, test_Y)
+print("Test accuracy:", accuracy)
