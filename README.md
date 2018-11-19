@@ -1,0 +1,1 @@
+Hyperparameters, regularization, Gradient Checking
