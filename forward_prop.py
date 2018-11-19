@@ -25,7 +25,6 @@ def relu(Z):
     RELU function
     """
     A = np.maximum(0, Z)
-    assert(A.shape == Z.shape)
 
     activation_cache = Z
     return A, activation_cache
@@ -36,7 +35,6 @@ def tanh(Z):
     Hyperbolic tangent function
     """
     A = np.tanh(Z)
-    assert(A.shape == Z.shape)
 
     activation_cache = Z
     return A, activation_cache
@@ -47,7 +45,6 @@ def sigmoid(Z):
     Sigmoid function
     """
     A = 1 / (1 + np.exp(-Z))
-    assert(A.shape == Z.shape)
 
     activation_cache = Z
     return A, activation_cache
@@ -64,6 +61,7 @@ def activation_forward(Z, activation):
     elif activation == 'sigmoid':
         A, activation_cache = sigmoid(Z)
 
+    assert(A.shape == Z.shape)
     return A, activation_cache
 
 ###########
@@ -73,7 +71,7 @@ def activation_forward(Z, activation):
 
 def dropout_forward(A, keep_prob):
     """
-    Apply the dropout regularization technique to the activation output
+    Apply the dropout regularization to the activation output
     """
     KEEP_MASK = np.random.rand(A.shape[0], A.shape[1])
     # Shut down each neuron of the layer with a probability of 1−keep_prob

@@ -7,7 +7,7 @@ import numpy as np
 
 def dropout_backward(dA, dropout_cache, keep_prob):
     """
-    Partial derivative of J with respect to the activation output
+    Partial derivative of J with respect to activation output
     """
     # dJ/dA = dJ/dA' * dA'/dA
     KEEP_MASK = dropout_cache
@@ -28,6 +28,7 @@ def relu_derivative(Z):
     RELU function derivative
     """
     dZ = np.int64(Z > 0)
+
     return dZ
 
 
@@ -36,6 +37,7 @@ def tanh_derivative(Z):
     Hyperbolic tangent function derivative
     """
     dZ = 1 - np.tanh(Z) ** 2
+
     return dZ
 
 
@@ -45,12 +47,13 @@ def sigmoid_derivative(Z):
     """
     s = 1 / (1 + np.exp(-Z))
     dZ = s * (1 - s)
+
     return dZ
 
 
 def activation_backward(dA, activation_cache, activation):
     """
-    Partial derivative of J with respect to the linear output
+    Partial derivative of J with respect to linear output
     """
     Z = activation_cache
 
@@ -74,7 +77,7 @@ def activation_backward(dA, activation_cache, activation):
 
 def linear_backward(dZ, linear_cache, l2_lambda=0):
     """
-    Partial derivative of J with respect to the parameters
+    Partial derivative of J with respect to parameters
     """
     A_prev, W, b = linear_cache
     m = A_prev.shape[1]

@@ -243,6 +243,7 @@ class DeepNN:
                      for key in ('dW', 'db')]
         grad_theta, _ = params_to_vector(grads, grad_keys)
 
+        # Initialize vectors of the same shape
         num_params = param_theta.shape[0]
         J_plus = np.zeros((num_params, 1))
         J_minus = np.zeros((num_params, 1))
@@ -273,9 +274,9 @@ class DeepNN:
         # Difference between the approximated gradient and the backward propagation gradient
         diff = calculate_diff(grad_theta, gradapprox)
         if diff > 2e-7:
-            print("\033[93m" + "Failed" + "\033[0m")
+            print("\033[93m" + "Failed gradient checking" + "\033[0m")
         else:
-            print("\033[92m" + "Passed" + "\033[0m")
+            print("\033[92m" + "Passed gradient checking" + "\033[0m")
 
         return diff
 
