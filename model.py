@@ -1,8 +1,27 @@
 import numpy as np
 
-from forward_prop import linear_forward, activation_forward, dropout_forward
-from backward_prop import linear_backward, activation_backward, dropout_backward
-from gradient_check import params_to_vector, vector_to_params, calculate_diff
+from utils import forward_prop
+from utils import backward_prop
+from utils import gradient_check
+
+
+class L2:
+    def __init__(self, _lambda):
+        # L2 regularization
+        # Regularization is used for penalizing complex models
+        # If model complexity is a function of weights, a feature weight with a high absolute value is more complex
+        # A regularization term is added to the cost
+        # In the backpropagation, weights end up smaller ("weight decay")
+        self._lambda = _lambda
+
+
+class Dropout:
+    def __init__(self, keep_probs):
+        # Dropout regularization
+        # Randomly shut down some neurons in each iteration
+        # With dropout, neurons become less sensitive to the activation of one other specific neuron
+        # Use dropout only during training, not during test time
+        self.keep_probs = keep_probs
 
 
 class DeepNN:
@@ -29,21 +48,17 @@ class DeepNN:
         else:
             self.initialization = hyperparams['initialization']
 
-        # L2 regularization
-        if 'l2_lambda' not in hyperparams:
-            self.l2_lambda = 0.
+        # Regularization techniques
+        if 'l2' not in hyperparams:
+            self.l2 = None
         else:
-            self.l2_lambda = hyperparams['l2_lambda']
+            self.l2 = hyperparams['l2']
 
-        # Dropout regularization
-        # Randomly shut down some neurons in each iteration
-        # With dropout, neurons become less sensitive to the activation of one other specific neuron
-        # Use dropout only during training, not during test time
-        if 'keep_probs' not in hyperparams:
-            self.keep_probs = np.ones(len(self.layer_dims))
+        if 'dropout' not in hyperparams:
+            self.dropout = None
         else:
-            self.keep_probs = np.array(hyperparams['keep_probs'])
-            assert(len(self.keep_probs) == len(self.layer_dims))
+            self.dropout = hyperparams['dropout']
+            assert(len(self.dropout.keep_probs) == len(self.layer_dims))
 
         # Specify seed to yield different initializations and dropouts
         if 'seed' not in hyperparams:
@@ -80,7 +95,7 @@ class DeepNN:
 
         return params
 
-    def train(self, X, Y, print_output=False):
+    def fit(self, X, Y, print_output=False):
         """
         Train an n-layer neural network
         """
@@ -120,15 +135,15 @@ class DeepNN:
             W = params['W' + str(l)]
             b = params['b' + str(l)]
             activation = self.activations[l]
-            keep_prob = self.keep_probs[l]
 
-            Z, linear_cache = linear_forward(A_prev, W, b)
-            A, activation_cache = activation_forward(Z, activation)
+            Z, linear_cache = forward_prop.linear_forward(A_prev, W, b)
+            A, activation_cache = forward_prop.activation_forward(Z, activation)
 
             dropout_cache = None
-            if not predict and keep_prob < 1:
+            if not predict and self.dropout is not None:
                 # Randomly shut down some neurons for each iteration and dataset
-                A, dropout_cache = dropout_forward(A, keep_prob)
+                keep_prob = self.dropout.keep_probs[l]
+                A, dropout_cache = forward_prop.dropout_forward(A, keep_prob)
 
             # Used in calculating derivatives
             cache = (linear_cache, activation_cache, dropout_cache)
@@ -154,10 +169,10 @@ class DeepNN:
             logprobs = np.nan_to_num(logprobs)
 
         cost = 1. / m * np.nansum(logprobs)
-        if self.l2_lambda > 0:
+        if self.l2 is not None:
             # L2 regularization cost
             L2 = np.sum([np.sum(np.square(params['W' + str(l)])) for l in range(len(self.layer_dims))])
-            cost += 1 / 2 * self.l2_lambda / m * L2
+            cost += 1 / 2 * self.l2._lambda / m * L2
         cost = np.squeeze(cost)
         assert(cost.shape == ())
 
@@ -184,15 +199,15 @@ class DeepNN:
         # Move from the last layer to the first
         for l in reversed(range(len(self.layer_dims))):
             linear_cache, activation_cache, dropout_cache = caches[l]
-            keep_prob = self.keep_probs[l]
             activation = self.activations[l]
 
-            if keep_prob < 1:
+            if self.dropout is not None:
                 # Apply the mask to shut down the same neurons as in the forward propagation
-                dA = dropout_backward(dA, dropout_cache, keep_prob)
+                keep_prob = self.dropout.keep_probs[l]
+                dA = backward_prop.dropout_backward(dA, dropout_cache, keep_prob)
 
-            dZ = activation_backward(dA, activation_cache, activation)
-            dA_prev, dW, db = linear_backward(dZ, linear_cache, self.l2_lambda)
+            dZ = backward_prop.activation_backward(dA, activation_cache, activation)
+            dA_prev, dW, db = backward_prop.linear_backward(dZ, linear_cache, l2=self.l2)
             grads['dW' + str(l)] = dW
             grads['db' + str(l)] = db
 
@@ -215,9 +230,9 @@ class DeepNN:
 
         return params
 
-    ##################
-    # GRADIENT CHECK #
-    ##################
+    #####################
+    # GRADIENT CHECKING #
+    #####################
 
     def gradient_check(self, X, Y, epsilon=1e-7):
         """
@@ -225,7 +240,7 @@ class DeepNN:
         """
         # http://ufldl.stanford.edu/wiki/index.php/Gradient_checking_and_advanced_optimization
         # Don't use with dropout
-        assert(np.all(self.keep_probs == 1.))
+        assert(self.dropout is None)
 
         # One iteration of gradient descent to get gradients
         params = self.initialize_params(X)
@@ -236,12 +251,12 @@ class DeepNN:
         param_keys = [key + str(l)
                       for l in range(len(self.layer_dims))
                       for key in ('W', 'b')]
-        param_theta, param_cache = params_to_vector(params, param_keys)
+        param_theta, param_cache = gradient_check.params_to_vector(params, param_keys)
 
         grad_keys = [key + str(l)
                      for l in range(len(self.layer_dims))
                      for key in ('dW', 'db')]
-        grad_theta, _ = params_to_vector(grads, grad_keys)
+        grad_theta, _ = gradient_check.params_to_vector(grads, grad_keys)
 
         # Initialize vectors of the same shape
         num_params = param_theta.shape[0]
@@ -256,7 +271,7 @@ class DeepNN:
             theta_plus = np.copy(param_theta)
             theta_plus[i][0] = theta_plus[i][0] + epsilon
             # Calculate new cost
-            theta_plus_params = vector_to_params(theta_plus, param_cache)
+            theta_plus_params = gradient_check.vector_to_params(theta_plus, param_cache)
             AL_plus, _ = self.propagate_forward(X, theta_plus_params)
             J_plus[i] = self.compute_cost(AL_plus, Y, theta_plus_params)
 
@@ -264,7 +279,7 @@ class DeepNN:
             theta_minus = np.copy(param_theta)
             theta_minus[i][0] = theta_minus[i][0] - epsilon
             # Calculate new cost
-            thetha_minus_params = vector_to_params(theta_minus, param_cache)
+            thetha_minus_params = gradient_check.vector_to_params(theta_minus, param_cache)
             AL_minus, _ = self.propagate_forward(X, thetha_minus_params)
             J_minus[i] = self.compute_cost(AL_minus, Y, thetha_minus_params)
 
@@ -272,7 +287,7 @@ class DeepNN:
             gradapprox[i] = (J_plus[i] - J_minus[i]) / (2 * epsilon)
 
         # Difference between the approximated gradient and the backward propagation gradient
-        diff = calculate_diff(grad_theta, gradapprox)
+        diff = gradient_check.calculate_diff(grad_theta, gradapprox)
         if diff > 2e-7:
             print("\033[93m" + "Failed gradient checking" + "\033[0m")
         else:
@@ -280,9 +295,9 @@ class DeepNN:
 
         return diff
 
-        ###########
-        # PREDICT #
-        ###########
+    ###########
+    # PREDICT #
+    ###########
 
     def predict(self, X, Y, threshold=0.5):
         """

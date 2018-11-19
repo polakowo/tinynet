@@ -75,7 +75,7 @@ def activation_backward(dA, activation_cache, activation):
 ###########
 
 
-def linear_backward(dZ, linear_cache, l2_lambda=0):
+def linear_backward(dZ, linear_cache, l2=None):
     """
     Partial derivative of J with respect to parameters
     """
@@ -84,9 +84,9 @@ def linear_backward(dZ, linear_cache, l2_lambda=0):
 
     # dJ/dW = dJ/dZ * dZ/dW
     dW = 1. / m * np.dot(dZ, A_prev.T)
-    if l2_lambda > 0:
+    if l2 is not None:
         # Penalize weights (weaken connections in the computational graph)
-        dW += l2_lambda / m * W
+        dW += l2._lambda / m * W
     assert(dW.shape == W.shape)
 
     # dJ/db = dJ/dZ * dZ/db
