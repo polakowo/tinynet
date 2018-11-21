@@ -5,26 +5,22 @@ from colorama import Fore
 from utils import regularizers
 
 
-def params_to_vector(params, keys):
+def params_to_vector(layer_params):
     """
     Roll parameters dictionary into a single (n, 1) vector
     """
     theta = np.zeros((0, 1))
-    # Start and end indices of each parameter in the vector
-    positions = {}
 
-    for key in keys:
-        matrix = params[key]
-        # Flatten the parameter into a vector
-        vector = np.reshape(matrix, (-1, 1))
+    for param in layer_params:
+        for k in param.keys():
+            vector = param[k]
 
-        from_i = len(theta)
-        # Append the vector
-        theta = np.concatenate((theta, vector), axis=0)
-        to_i = len(theta)
-        positions[key] = (from_i, to_i)
+            # Flatten the vector
+            vector = np.reshape(vector, (-1, 1))
+            # Append the vector
+            theta = np.concatenate((theta, vector), axis=0)
 
-    cache = (params, positions)
+    cache = layer_params
     return theta, cache
 
 
@@ -32,14 +28,20 @@ def vector_to_params(theta, cache):
     """
     Unroll parameters dictionary from a single vector
     """
-    _params, positions = cache
-    params = _params.copy()
+    _layer_params = cache
+    layer_params = _layer_params.copy()
 
-    for key, (from_i, to_i) in positions.items():
-        # Extract and reshape the parameter to the original form
-        params[key] = theta[from_i:to_i].reshape(_params[key].shape)
+    i = 0
+    for param in layer_params:
+        for k in param.keys():
+            vector = param[k]
 
-    return params
+            # Extract and reshape the parameter to the original form
+            j = i + vector.shape[0] * vector.shape[1]
+            param[k] = theta[i:j].reshape(vector.shape)
+            i = j
+
+    return layer_params
 
 
 def calculate_diff(A, B):
@@ -74,20 +76,13 @@ class GradientCheck:
         assert(not isinstance(self.model.regularizer, regularizers.Dropout))
 
         # One iteration of gradient descent to get gradients
-        params = self.model.initialize_params(X)
-        AL, caches = self.model.propagate_forward(X, params)
-        grads = self.model.propagate_backward(AL, Y, caches)
+        layer_params = self.model.initialize_params(X)
+        AL, caches = self.model.propagate_forward(X, layer_params)
+        layer_grads = self.model.propagate_backward(AL, Y, caches)
 
         # Roll parameters dictionary into a large (n, 1) vector
-        param_keys = [key + str(l)
-                      for l in range(len(self.model.layer_dims))
-                      for key in ('W', 'b')]
-        param_theta, param_cache = params_to_vector(params, param_keys)
-
-        grad_keys = [key + str(l)
-                     for l in range(len(self.model.layer_dims))
-                     for key in ('dW', 'db')]
-        grad_theta, _ = params_to_vector(grads, grad_keys)
+        param_theta, param_cache = params_to_vector(layer_params)
+        grad_theta, _ = params_to_vector(layer_grads)
 
         # Initialize vectors of the same shape
         num_params = param_theta.shape[0]

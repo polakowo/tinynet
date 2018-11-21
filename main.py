@@ -1,10 +1,12 @@
-from model import DeepNN
-
-from utils.regularizers import L2
-from utils.optimizers import Adam
-from utils.gradient_check import GradientCheck
+from tabulate import tabulate
+from colorama import Fore
 
 from data import load_2D_dataset
+from model import DeepNN
+from utils.regularizers import L2
+from utils.optimizers import Adam, Momentum
+from utils.gradient_check import GradientCheck
+
 
 # Load data
 train_X, train_Y, test_X, test_Y = load_2D_dataset()
@@ -12,10 +14,11 @@ train_X, train_Y, test_X, test_Y = load_2D_dataset()
 # Define hypyerparameters
 hyperparams = {
     'learning_rate': 0.3,
-    'num_epochs': 1000,
+    'num_epochs': 100,
+    'mini_batch_size': 64,
     'layer_dims': [20, 3, 1],
     'activations': ['relu', 'relu', 'sigmoid'],
-    'regularizer': L2(0.5)
+    'optimizer': Adam()
 }
 
 # Set up the model
@@ -27,11 +30,14 @@ dnn = DeepNN(**hyperparams)
 
 # Train the model
 print()
-costs = dnn.train(train_X, train_Y)
+costs = dnn.train(train_X, train_Y, print_progress=True)
 
 # Check the performance
-_, accuracy = dnn.predict(train_X, train_Y)
-print("Training accuracy:", accuracy)
-_, accuracy = dnn.predict(test_X, test_Y)
-print("Test accuracy:", accuracy)
+print(Fore.BLUE + '-' * 100 + Fore.RESET)
+print('Performance:')
+_, train_accuracy = dnn.predict(train_X, train_Y)
+_, test_accuracy = dnn.predict(test_X, test_Y)
+print(tabulate([['train', '%.4f' % train_accuracy], ['test', '%.4f' % test_accuracy]],
+               headers=['', 'accuracy'],
+               tablefmt="presto"))
 print()

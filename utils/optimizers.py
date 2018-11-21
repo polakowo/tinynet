@@ -17,36 +17,44 @@ class Momentum:
         # Increasing beta will smooth out the gradients
         self.beta = beta
 
-    def initialize_params(self, params):
+    def initialize_params(self, layer_params):
         """
         Initialize parameters
         """
-        self.v = {}
+        self.layer_v = []
 
-        for l in range(params['L']):
-            self.v['dW' + str(l)] = np.zeros(params['W' + str(l)].shape)
-            self.v['db' + str(l)] = np.zeros(params['b' + str(l)].shape)
+        for l, params in enumerate(layer_params):
+            v = {}
 
-    def update_params(self, params, grads, learning_rate):
+            for k in params.keys():
+                v['d' + k] = np.zeros(params[k].shape)
+
+            self.layer_v.append(v)
+
+    def update_params(self, layer_params, layer_grads, learning_rate):
         """
         Update parameters
         """
-        # Momentum update for each parameter
-        for l in range(params['L']):
-            # Compute velocities
-            self.v['dW' + str(l)] = self.beta * self.v['dW' + str(l)] + (1 - self.beta) * grads['dW' + str(l)]
-            self.v['db' + str(l)] = self.beta * self.v['db' + str(l)] + (1 - self.beta) * grads['db' + str(l)]
+        # Momentum update for each parameter in a layer
+        for l, params in enumerate(layer_params):
+            v = self.layer_v[l]
 
-            # Update parameters
-            params['W' + str(l)] -= learning_rate * self.v['dW' + str(l)]
-            params['b' + str(l)] -= learning_rate * self.v['db' + str(l)]
+            for k in params.keys():
+                grad = layer_grads[l]['d' + k]
 
-        return params
+                # Compute velocities
+                v['d' + k] = self.beta * v['d' + k] + (1 - self.beta) * grad
+
+                # Update parameters
+                layer_params[l][k] -= learning_rate * v['d' + k]
+
+        return layer_params
 
 
 class Adam:
     """
     Adam optimization algorithm
+    https://arxiv.org/pdf/1412.6980.pdf
 
     Adam combines ideas from RMSProp and Momentum
     The algorithm calculates an exponential moving average of the gradient and the squared gradient
@@ -60,54 +68,52 @@ class Adam:
         # Epsilon is required to prevent division by zero
         self.epsilon = epsilon
 
-    def initialize_params(self, params):
+    def initialize_params(self, layer_params):
         """
         Initialize parameters
         """
-        self.v = {}
-        self.s = {}
+        # Initialize 1st moment vector
+        self.layer_v = []
+        # Initialize 2nd moment vector
+        self.layer_s = []
+        # Initialize timestep
         self.t = 1
 
-        for l in range(params['L']):
-            self.v['dW' + str(l)] = np.zeros(params['W' + str(l)].shape)
-            self.v['db' + str(l)] = np.zeros(params['b' + str(l)].shape)
-            self.s['dW' + str(l)] = np.zeros(params['W' + str(l)].shape)
-            self.s['db' + str(l)] = np.zeros(params['b' + str(l)].shape)
+        for l, params in enumerate(layer_params):
+            v = {}
+            s = {}
 
-    def update_params(self, params, grads, learning_rate):
+            for k in params.keys():
+                v['d' + k] = np.zeros(params[k].shape)
+                s['d' + k] = np.zeros(params[k].shape)
+
+            self.layer_v.append(v)
+            self.layer_s.append(s)
+
+    def update_params(self, layer_params, layer_grads, learning_rate):
         """
         Update parameters
         """
-        # Initialize estimate dictionaries
-        v_corrected = {}
-        s_corrected = {}
+        # Perform Adam update on all parameters in a layer
+        for l, params in enumerate(layer_params):
+            v = self.layer_v[l]
+            s = self.layer_s[l]
 
-        # Perform Adam update on all parameters
-        for l in range(params['L']):
-            # Moving average of the gradients
-            self.v["dW" + str(l)] = self.beta1 * self.v["dW" + str(l)] + (1 - self.beta1) * grads['dW' + str(l)]
-            self.v["db" + str(l)] = self.beta1 * self.v["db" + str(l)] + (1 - self.beta1) * grads['db' + str(l)]
+            for k in params.keys():
+                grad = layer_grads[l]['d' + k]
+                # Update biased first moment estimate
+                v['d' + k] = self.beta1 * v['d' + k] + (1 - self.beta1) * grad
+                # Update biased second raw moment estimate
+                s['d' + k] = self.beta2 * s['d' + k] + (1 - self.beta2) * np.square(grad)
 
-            # Compute the first bias-corrected estimate
-            v_corrected["dW" + str(l)] = self.v["dW" + str(l)] / (1 - self.beta1 ** self.t)
-            v_corrected["db" + str(l)] = self.v["db" + str(l)] / (1 - self.beta1 ** self.t)
+                # Compute bias-corrected first moment estimate
+                v_corrected = v['d' + k] / (1 - self.beta1 ** self.t)
+                # Compute bias-corrected second raw moment estimate
+                s_corrected = s['d' + k] / (1 - self.beta2 ** self.t)
 
-            # Moving average of the squared gradients
-            self.s["dW" + str(l)] = self.beta2 * self.s["dW" + str(l)] + \
-                (1 - self.beta2) * np.square(grads['dW' + str(l)])
-            self.s["db" + str(l)] = self.beta2 * self.s["db" + str(l)] + \
-                (1 - self.beta2) * np.square(grads['db' + str(l)])
-
-            # Compute the second bias-corrected estimate
-            s_corrected["dW" + str(l)] = self.s["dW" + str(l)] / (1 - self.beta2 ** self.t)
-            s_corrected["db" + str(l)] = self.s["db" + str(l)] / (1 - self.beta2 ** self.t)
-
-            # Update parameters
-            params["W" + str(l)] -= learning_rate * v_corrected["dW" + str(l)] / \
-                (np.sqrt(s_corrected["dW" + str(l)]) + self.epsilon)
-            params["b" + str(l)] -= learning_rate * v_corrected["db" + str(l)] / \
-                (np.sqrt(s_corrected["db" + str(l)]) + self.epsilon)
+                # Update parameters
+                layer_params[l][k] -= learning_rate * v_corrected / (np.sqrt(s_corrected) + self.epsilon)
 
         # Update epoch
         self.t += 1
-        return params
+        return layer_params

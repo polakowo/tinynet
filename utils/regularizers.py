@@ -1,6 +1,7 @@
 import numpy as np
 
 # Regularization is used for penalizing complex models
+# It forces the downstream hidden units not to rely too much on the previous units by introducing noise
 # http://ruder.io/optimizing-gradient-descent/index.html#minibatchgradientdescent
 
 
@@ -18,11 +19,11 @@ class L2:
         # Encourages the mean of the weights toward 0, with a normal (bell-shaped or Gaussian) distribution
         self._lambda = _lambda
 
-    def compute_term(self, params, m):
+    def compute_term(self, layer_params, m):
         """
         Compute the L2 regularization term
         """
-        L2 = np.sum([np.sum(np.square(params['W' + str(l)])) for l in range(params['L'])])
+        L2 = np.sum([np.sum(np.square(params['W'])) for params in layer_params])
         return 1 / 2 * self._lambda / m * L2
 
     def compute_term_derivative(self, W, m):
