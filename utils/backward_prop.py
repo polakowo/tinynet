@@ -1,25 +1,9 @@
 import numpy as np
 
+from utils import regularizers
+
 ###########
 # STAGE 1 #
-###########
-
-
-def dropout_backward(dA, dropout_cache, keep_prob):
-    """
-    Partial derivative of J with respect to activation output
-    """
-    # dJ/dA = dJ/dA' * dA'/dA
-    KEEP_MASK = dropout_cache
-    # Apply the mask to shut down the same neurons as during the forward propagation
-    dA = dA * KEEP_MASK
-    # Scale the value of neurons that haven't been shut down
-    dA = dA / keep_prob
-
-    return dA
-
-###########
-# STAGE 2 #
 ###########
 
 
@@ -71,11 +55,11 @@ def activation_backward(dA, activation_cache, activation):
     return dZ
 
 ###########
-# STAGE 3 #
+# STAGE 2 #
 ###########
 
 
-def linear_backward(dZ, linear_cache, l2=None):
+def linear_backward(dZ, linear_cache, regularizer=None):
     """
     Partial derivative of J with respect to parameters
     """
@@ -84,10 +68,11 @@ def linear_backward(dZ, linear_cache, l2=None):
 
     # dJ/dW = dJ/dZ * dZ/dW
     dW = 1. / m * np.dot(dZ, A_prev.T)
-    if l2 is not None:
-        # Penalize weights (weaken connections in the computational graph)
-        dW += l2._lambda / m * W
     assert(dW.shape == W.shape)
+
+    if isinstance(regularizer, regularizers.L2):
+        # Penalize weights (weaken connections in the computational graph)
+        dW += regularizer.compute_term_derivative(W, m)
 
     # dJ/db = dJ/dZ * dZ/db
     db = 1. / m * np.sum(dZ, axis=1, keepdims=True)

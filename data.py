@@ -1,11 +1,13 @@
 import numpy as np
 import h5py
 import scipy.io
+import os
+dirname = os.path.dirname(__file__)
 
 
 def load_images():
-    with h5py.File('datasets/train_catvnoncat.h5', 'r') as train_dataset:
-        with h5py.File('datasets/test_catvnoncat.h5', 'r') as test_dataset:
+    with h5py.File(os.path.join(dirname, 'datasets/train_catvnoncat.h5'), 'r') as train_dataset:
+        with h5py.File(os.path.join(dirname, 'datasets/test_catvnoncat.h5'), 'r') as test_dataset:
 
             train_X = np.array(train_dataset['train_set_x'][:])
             train_Y = np.array(train_dataset['train_set_y'][:])
@@ -26,7 +28,7 @@ def load_images():
 
 
 def load_2D_dataset():
-    data = scipy.io.loadmat('datasets/data.mat')
+    data = scipy.io.loadmat(os.path.join(dirname, 'datasets/data.mat'))
     train_X = data['X'].T
     train_Y = data['y'].T
     test_X = data['Xval'].T

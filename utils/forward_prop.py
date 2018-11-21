@@ -63,22 +63,3 @@ def activation_forward(Z, activation):
 
     assert(A.shape == Z.shape)
     return A, activation_cache
-
-###########
-# STAGE 3 #
-###########
-
-
-def dropout_forward(A, keep_prob):
-    """
-    Apply the dropout regularization to the activation output
-    """
-    KEEP_MASK = np.random.rand(A.shape[0], A.shape[1])
-    # Shut down each neuron of the layer with a probability of 1−keep_prob
-    KEEP_MASK = KEEP_MASK < keep_prob
-    A = A * KEEP_MASK
-    # Divide each dropout layer by keep_prob to keep the same expected value for the activation
-    A = A / keep_prob
-
-    dropout_cache = KEEP_MASK
-    return A, dropout_cache

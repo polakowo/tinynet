@@ -1,27 +1,17 @@
 import numpy as np
+import math
+
+from tqdm import trange
+import asciichartpy
+from colorama import Fore
+from tabulate import tabulate
 
 from utils import forward_prop
 from utils import backward_prop
-from utils import gradient_check
+from utils import regularizers
+from utils import optimizers
 
-
-class L2:
-    def __init__(self, _lambda):
-        # L2 regularization
-        # Regularization is used for penalizing complex models
-        # If model complexity is a function of weights, a feature weight with a high absolute value is more complex
-        # A regularization term is added to the cost
-        # In the backpropagation, weights end up smaller ("weight decay")
-        self._lambda = _lambda
-
-
-class Dropout:
-    def __init__(self, keep_probs):
-        # Dropout regularization
-        # Randomly shut down some neurons in each iteration
-        # With dropout, neurons become less sensitive to the activation of one other specific neuron
-        # Use dropout only during training, not during test time
-        self.keep_probs = keep_probs
+# TODO: Data augmentation
 
 
 class DeepNN:
@@ -42,39 +32,51 @@ class DeepNN:
         self.learning_rate = hyperparams['learning_rate']
 
         # Number of iterations of gradient descent
-        self.num_iterations = hyperparams['num_iterations']
+        self.num_epochs = hyperparams['num_epochs']
         if 'initialization' not in hyperparams:
             self.initialization = 'xavier'
         else:
             self.initialization = hyperparams['initialization']
 
-        # Regularization techniques
-        if 'l2' not in hyperparams:
-            self.l2 = None
+        # Mini-batch gradient descent
+        # Faster if the size is a power of 2, usually from 64 to 512
+        # Make sure that a single mini-batch fits into the CPU/GPU memory
+        if 'mini_batch_size' not in hyperparams:
+            self.mini_batch_size = None
         else:
-            self.l2 = hyperparams['l2']
+            self.mini_batch_size = hyperparams['mini_batch_size']
 
-        if 'dropout' not in hyperparams:
-            self.dropout = None
+        # Regularization techniques
+        if 'regularizer' not in hyperparams:
+            self.regularizer = None
         else:
-            self.dropout = hyperparams['dropout']
-            assert(len(self.dropout.keep_probs) == len(self.layer_dims))
+            self.regularizer = hyperparams['regularizer']
+
+        # Optimizations techniques
+        if 'optimizer' not in hyperparams:
+            self.optimizer = None
+        else:
+            self.optimizer = hyperparams['optimizer']
 
         # Specify seed to yield different initializations and dropouts
         if 'seed' not in hyperparams:
-            np.random.seed(1)
+            self.seed = 1
         else:
-            np.random.seed(hyperparams['seed'])
+            self.seed = hyperparams['seed']
 
-    #########
-    # TRAIN #
-    #########
+    #####################
+    # INITIALIZE PARAMS #
+    #####################
 
     def initialize_params(self, X):
         """
         Initialize the weights and the biases
         """
-        params = {}
+        np.random.seed(self.seed)
+        # Some functions outside this class may need it
+        params = {
+            'L': len(self.layer_dims)
+        }
 
         for l in range(len(self.layer_dims)):
             prev_layer_dim = self.layer_dims[l - 1] if l > 0 else X.shape[0]
@@ -94,30 +96,6 @@ class DeepNN:
             params['b' + str(l)] = np.zeros((this_layer_dim, 1))
 
         return params
-
-    def fit(self, X, Y, print_output=False):
-        """
-        Train an n-layer neural network
-        """
-        # Initialize parameters dictionary
-        params = self.initialize_params(X)
-
-        costs = []
-        # Gradient descent
-        for i in range(0, self.num_iterations):
-            AL, caches = self.propagate_forward(X, params)
-            cost = self.compute_cost(AL, Y, params)
-            grads = self.propagate_backward(AL, Y, caches)
-            params = self.update_params(params, grads)
-
-            if print_output and i % 10000 == 0:
-                print("Cost after iteration %i: %f" % (i, cost))
-                costs.append(cost)
-
-        # Store parameters as a class variable for later predictions
-        self.params = params
-
-        return costs
 
     ################
     # FORWARD PROP #
@@ -140,10 +118,9 @@ class DeepNN:
             A, activation_cache = forward_prop.activation_forward(Z, activation)
 
             dropout_cache = None
-            if not predict and self.dropout is not None:
+            if not predict and isinstance(self.regularizer, regularizers.Dropout):
                 # Randomly shut down some neurons for each iteration and dataset
-                keep_prob = self.dropout.keep_probs[l]
-                A, dropout_cache = forward_prop.dropout_forward(A, keep_prob)
+                A, dropout_cache = self.regularizer.dropout_forward(A, l)
 
             # Used in calculating derivatives
             cache = (linear_cache, activation_cache, dropout_cache)
@@ -167,12 +144,13 @@ class DeepNN:
             logprobs = np.multiply(-np.log(AL), Y) + np.multiply(-np.log(1 - AL), 1 - Y)
             logprobs[logprobs == np.inf] = 0
             logprobs = np.nan_to_num(logprobs)
-
         cost = 1. / m * np.nansum(logprobs)
-        if self.l2 is not None:
-            # L2 regularization cost
-            L2 = np.sum([np.sum(np.square(params['W' + str(l)])) for l in range(len(self.layer_dims))])
-            cost += 1 / 2 * self.l2._lambda / m * L2
+
+        if isinstance(self.regularizer, regularizers.L2):
+            # Add L2 regularization term to the cost
+            term = self.regularizer.compute_term(params, m)
+            cost += term
+
         cost = np.squeeze(cost)
         assert(cost.shape == ())
 
@@ -186,7 +164,10 @@ class DeepNN:
         """
         Propagate backwards to derive the gradients
         """
-        grads = {}
+        # Always specify L to iterate over keys safely
+        grads = {
+            'L': len(self.layer_dims)
+        }
         Y = Y.reshape(AL.shape)
 
         with np.errstate(divide='ignore', invalid='ignore'):
@@ -201,13 +182,14 @@ class DeepNN:
             linear_cache, activation_cache, dropout_cache = caches[l]
             activation = self.activations[l]
 
-            if self.dropout is not None:
+            if isinstance(self.regularizer, regularizers.Dropout):
                 # Apply the mask to shut down the same neurons as in the forward propagation
-                keep_prob = self.dropout.keep_probs[l]
-                dA = backward_prop.dropout_backward(dA, dropout_cache, keep_prob)
+                dA = self.regularizer.dropout_backward(dA, dropout_cache, l)
 
             dZ = backward_prop.activation_backward(dA, activation_cache, activation)
-            dA_prev, dW, db = backward_prop.linear_backward(dZ, linear_cache, l2=self.l2)
+
+            dA_prev, dW, db = backward_prop.linear_backward(dZ, linear_cache, regularizer=self.regularizer)
+
             grads['dW' + str(l)] = dW
             grads['db' + str(l)] = db
 
@@ -230,70 +212,124 @@ class DeepNN:
 
         return params
 
-    #####################
-    # GRADIENT CHECKING #
-    #####################
+    #########
+    # TRAIN #
+    #########
 
-    def gradient_check(self, X, Y, epsilon=1e-7):
-        """
-        Check whether backpropagation computes the gradients correctly
-        """
-        # http://ufldl.stanford.edu/wiki/index.php/Gradient_checking_and_advanced_optimization
-        # Don't use with dropout
-        assert(self.dropout is None)
+    def generate_mini_batches(self, X, Y, seed=None):
+        if seed is not None:
+            np.random.seed(seed)
+        m = X.shape[1]
+        mini_batches = []
 
-        # One iteration of gradient descent to get gradients
+        # Step 1: Shuffle (X, Y)
+        permutation = list(np.random.permutation(m))
+        shuffled_X = X[:, permutation]
+        shuffled_Y = Y[:, permutation].reshape((1, m))
+
+        # Step 2: Partition (shuffled_X, shuffled_Y)
+        num_mini_batches = math.floor(m / self.mini_batch_size)
+        for k in range(num_mini_batches + 1):
+            mini_batch_X = shuffled_X[:, k * self.mini_batch_size: (k + 1) * self.mini_batch_size]
+            mini_batch_Y = shuffled_Y[:, k * self.mini_batch_size: (k + 1) * self.mini_batch_size]
+
+            mini_batch = (mini_batch_X, mini_batch_Y)
+            mini_batches.append(mini_batch)
+
+        return mini_batches
+
+    def train(self, X, Y, print_overview=True, print_progress=True, print_cost_chart=True):
+        """
+        Train an L-layer neural network
+
+        X must be of shape (n, m)
+        Y must be of shape (1, m)
+        where n is the number of features and m is the number of datasets
+        """
+        # Overview over the dataset
+        if print_overview:
+            print("Overview:")
+
+            if self.mini_batch_size is None:
+                mini_batch_size = X.shape[1]
+            else:
+                mini_batch_size = self.mini_batch_size
+            print(tabulate([[
+                X.shape[0],
+                X.shape[1],
+                mini_batch_size,
+                math.floor(X.shape[1] / mini_batch_size),
+                self.num_epochs
+            ]],
+                headers=[
+                    'n',
+                    'm',
+                    'batch-size',
+                    'batches',
+                    'epochs'
+            ]))
+
+        # Initialize parameters dictionary
         params = self.initialize_params(X)
-        AL, caches = self.propagate_forward(X, params)
-        grads = self.propagate_backward(AL, Y, caches)
 
-        # Roll parameters dictionary into a large (n, 1) vector
-        param_keys = [key + str(l)
-                      for l in range(len(self.layer_dims))
-                      for key in ('W', 'b')]
-        param_theta, param_cache = gradient_check.params_to_vector(params, param_keys)
+        # Initialize the optimizer
+        if isinstance(self.optimizer, optimizers.Momentum):
+            self.optimizer.initialize_params(params)
+        elif isinstance(self.optimizer, optimizers.Adam):
+            self.optimizer.initialize_params(params)
 
-        grad_keys = [key + str(l)
-                     for l in range(len(self.layer_dims))
-                     for key in ('dW', 'db')]
-        grad_theta, _ = gradient_check.params_to_vector(grads, grad_keys)
+        costs = []
+        # Progress information is displayed and updated dynamically in the console
+        if print_progress:
+            print("Progress:")
+        with trange(self.num_epochs,
+                    disable=not print_progress,
+                    bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.YELLOW, Fore.RESET),
+                    ncols=100) as t:
+            for i in t:
+                if self.mini_batch_size is not None:
+                    # Divide the dataset into mini-batched based on their size
+                    # We increment the seed to reshuffle differently the dataset after each epoch
+                    mini_batches = self.generate_mini_batches(X, Y, seed=self.seed + i)
+                else:
+                    # Batch gradient descent
+                    mini_batches = [(X, Y)]
 
-        # Initialize vectors of the same shape
-        num_params = param_theta.shape[0]
-        J_plus = np.zeros((num_params, 1))
-        J_minus = np.zeros((num_params, 1))
-        gradapprox = np.zeros((num_params, 1))
+                for mini_batch in mini_batches:
+                    # Unpack the mini-batch
+                    mini_X, mini_Y = mini_batch
 
-        # Repeat for each number (parameter) in the vector
-        for i in range(num_params):
-            # Use two-sided Taylor approximation which is 2x more precise than one-sided
-            # Add epsilon to the parameter
-            theta_plus = np.copy(param_theta)
-            theta_plus[i][0] = theta_plus[i][0] + epsilon
-            # Calculate new cost
-            theta_plus_params = gradient_check.vector_to_params(theta_plus, param_cache)
-            AL_plus, _ = self.propagate_forward(X, theta_plus_params)
-            J_plus[i] = self.compute_cost(AL_plus, Y, theta_plus_params)
+                    # Forward propagation
+                    AL, caches = self.propagate_forward(mini_X, params)
 
-            # Subtract epsilon from the parameter
-            theta_minus = np.copy(param_theta)
-            theta_minus[i][0] = theta_minus[i][0] - epsilon
-            # Calculate new cost
-            thetha_minus_params = gradient_check.vector_to_params(theta_minus, param_cache)
-            AL_minus, _ = self.propagate_forward(X, thetha_minus_params)
-            J_minus[i] = self.compute_cost(AL_minus, Y, thetha_minus_params)
+                    # Compute cost
+                    cost = self.compute_cost(AL, mini_Y, params)
+                    costs.append(cost)
 
-            # Approximate the partial derivative, error is eps^2
-            gradapprox[i] = (J_plus[i] - J_minus[i]) / (2 * epsilon)
+                    # Backward propagation
+                    grads = self.propagate_backward(AL, mini_Y, caches)
 
-        # Difference between the approximated gradient and the backward propagation gradient
-        diff = gradient_check.calculate_diff(grad_theta, gradapprox)
-        if diff > 2e-7:
-            print("\033[93m" + "Failed gradient checking" + "\033[0m")
-        else:
-            print("\033[92m" + "Passed gradient checking" + "\033[0m")
+                    # Update parameters
+                    if isinstance(self.optimizer, optimizers.Momentum):
+                        params = self.optimizer.update_params(params, grads, self.learning_rate)
+                    elif isinstance(self.optimizer, optimizers.Adam):
+                        params = self.optimizer.update_params(params, grads, self.learning_rate)
+                    else:
+                        params = self.update_params(params, grads)
 
-        return diff
+        # Store parameters as a class variable
+        self.params = params
+        # Success: The model has been trained
+
+        # Plot the cost as function of time in the console
+        if print_cost_chart:
+            print("Cost chart:")
+        cfg = {
+            'height': 5
+        }
+        print("%s%s%s" % (Fore.YELLOW, asciichartpy.plot(costs[::(len(costs) // 50)], cfg), Fore.RESET))
+
+        return costs
 
     ###########
     # PREDICT #
