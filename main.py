@@ -13,6 +13,7 @@ train_X, train_Y, test_X, test_Y = load_2D_dataset()
 hyperparams = {
     'learning_rate': 0.3,
     'num_epochs': 100,
+    'mini_batch_size': 32,
     'layer_dims': [20, 3, 1],
     'activations': ['relu', 'relu', 'sigmoid'],
     'regularizer': L2(0.5)

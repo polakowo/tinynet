@@ -246,28 +246,20 @@ class DeepNN:
         Y must be of shape (1, m)
         where n is the number of features and m is the number of datasets
         """
-        # Overview over the dataset
+        # Overview of the dataset
         if print_overview:
             print("Overview:")
 
-            if self.mini_batch_size is None:
-                mini_batch_size = X.shape[1]
-            else:
-                mini_batch_size = self.mini_batch_size
-            print(tabulate([[
-                X.shape[0],
-                X.shape[1],
-                mini_batch_size,
-                math.floor(X.shape[1] / mini_batch_size),
-                self.num_epochs
-            ]],
-                headers=[
-                    'n',
-                    'm',
-                    'batch-size',
-                    'batches',
-                    'epochs'
-            ]))
+            columns = []
+            columns.append(('n', X.shape[0]))
+            columns.append(('m', X.shape[1]))
+            if self.mini_batch_size is not None:
+                columns.append(('mini-batch-size', self.mini_batch_size))
+                columns.append(('mini-batches', math.floor(X.shape[1] / self.mini_batch_size)))
+            columns.append(('epochs', self.num_epochs))
+
+            headers, row = zip(*columns)
+            print(tabulate([row], headers=headers, tablefmt="presto"))
 
         # Initialize parameters dictionary
         params = self.initialize_params(X)
