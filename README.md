@@ -1,1 +1,1 @@
-Hyperparameters, regularization, Gradient Checking
+Support for a range of hyperparameters, regularizers, optimizers, Gradient Checking
