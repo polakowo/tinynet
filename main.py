@@ -15,10 +15,8 @@ train_X, train_Y, test_X, test_Y = load_2D_dataset()
 hyperparams = {
     'learning_rate': 0.3,
     'num_epochs': 100,
-    'mini_batch_size': 64,
     'layer_dims': [20, 3, 1],
-    'activations': ['relu', 'relu', 'sigmoid'],
-    'optimizer': Adam()
+    'activations': ['relu', 'relu', 'sigmoid']
 }
 
 # Set up the model
@@ -30,7 +28,7 @@ dnn = DeepNN(**hyperparams)
 
 # Train the model
 print()
-costs = dnn.train(train_X, train_Y, print_progress=True)
+costs = dnn.train(train_X, train_Y, print_dataset=True, print_progress=True, print_cost=True)
 
 # Check the performance
 print(Fore.BLUE + '-' * 100 + Fore.RESET)
