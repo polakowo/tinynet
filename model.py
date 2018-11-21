@@ -28,7 +28,7 @@ class DeepNN:
         assert(len(self.activations) == len(self.layer_dims))
 
         # The key differentiator between convergence and divergence
-        # Don't set too high
+        # Can be a function of epoch
         self.learning_rate = hyperparams['learning_rate']
 
         # Number of iterations of gradient descent
@@ -201,14 +201,14 @@ class DeepNN:
     # UPDATE PARAMS #
     #################
 
-    def update_params(self, params, grads):
+    def update_params(self, params, grads, learning_rate):
         """
         Update the parameters using gradient descent
         """
         for l in range(len(self.layer_dims)):
             # Update rule for each parameter
-            params['W' + str(l)] = params['W' + str(l)] - self.learning_rate * grads['dW' + str(l)]
-            params['b' + str(l)] = params['b' + str(l)] - self.learning_rate * grads['db' + str(l)]
+            params['W' + str(l)] = params['W' + str(l)] - learning_rate * grads['dW' + str(l)]
+            params['b' + str(l)] = params['b' + str(l)] - learning_rate * grads['db' + str(l)]
 
         return params
 
@@ -246,7 +246,8 @@ class DeepNN:
         Y must be of shape (1, m)
         where n is the number of features and m is the number of datasets
         """
-        # Overview of the dataset
+
+        # Overview of the complexity
         if print_overview:
             print("Overview:")
 
@@ -276,13 +277,13 @@ class DeepNN:
             print("Progress:")
         with trange(self.num_epochs,
                     disable=not print_progress,
-                    bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.YELLOW, Fore.RESET),
+                    ascii=True,
                     ncols=100) as t:
-            for i in t:
+            for epoch in t:
                 if self.mini_batch_size is not None:
                     # Divide the dataset into mini-batched based on their size
                     # We increment the seed to reshuffle differently the dataset after each epoch
-                    mini_batches = self.generate_mini_batches(X, Y, seed=self.seed + i)
+                    mini_batches = self.generate_mini_batches(X, Y, seed=self.seed + epoch)
                 else:
                     # Batch gradient descent
                     mini_batches = [(X, Y)]
@@ -302,12 +303,17 @@ class DeepNN:
                     grads = self.propagate_backward(AL, mini_Y, caches)
 
                     # Update parameters
-                    if isinstance(self.optimizer, optimizers.Momentum):
-                        params = self.optimizer.update_params(params, grads, self.learning_rate)
-                    elif isinstance(self.optimizer, optimizers.Adam):
-                        params = self.optimizer.update_params(params, grads, self.learning_rate)
+                    if callable(self.learning_rate):
+                        learning_rate = self.learning_rate(epoch)
                     else:
-                        params = self.update_params(params, grads)
+                        learning_rate = self.learning_rate
+
+                    if isinstance(self.optimizer, optimizers.Momentum):
+                        params = self.optimizer.update_params(params, grads, learning_rate)
+                    elif isinstance(self.optimizer, optimizers.Adam):
+                        params = self.optimizer.update_params(params, grads, learning_rate)
+                    else:
+                        params = self.update_params(params, grads, learning_rate)
 
         # Store parameters as a class variable
         self.params = params
@@ -319,7 +325,7 @@ class DeepNN:
         cfg = {
             'height': 5
         }
-        print("%s%s%s" % (Fore.YELLOW, asciichartpy.plot(costs[::(len(costs) // 50)], cfg), Fore.RESET))
+        print(asciichartpy.plot(costs[::(len(costs) // 50)], cfg))
 
         return costs
 
