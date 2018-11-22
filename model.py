@@ -135,7 +135,7 @@ class DeepNN:
         for layer in self.layers:
             for key in layer.params:
                 # Update the rule for each parameter in each layer
-                layer.params[key] -= self.lr * layer.grads['d' + key]
+                layer.params[key] = layer.params[key] - self.lr * layer.grads['d' + key]
 
     #########
     # TRAIN #

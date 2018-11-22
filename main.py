@@ -1,28 +1,27 @@
-import numpy as np
 from tabulate import tabulate
 from colorama import Fore
 
-from data import load_2D_dataset
+from data import load_dataset
 from model import DeepNN
-from utils.regularizers import Dropout
 
 from utils.layer import Layer
 from utils import activations
+from utils.regularizers import L2
 
 
 # Load data
-train_X, train_Y, test_X, test_Y = load_2D_dataset()
+train_X, train_Y, test_X, test_Y = load_dataset()
 
 # Set up the model
 dnn = DeepNN([
-    Layer(n=20, activation=activations.ReLU),
-    Layer(n=3, activation=activations.ReLU),
+    Layer(n=5, activation=activations.ReLU),
+    Layer(n=2, activation=activations.ReLU),
     Layer(n=1, activation=activations.sigmoid)
-], lr=0.3, num_epochs=10000)
+], lr=0.1, num_epochs=10000)
 
 # Train the model
 print()
-costs = dnn.train(train_X, train_Y, print_progress=True, print_coststats=True)
+costs = dnn.train(train_X, train_Y, print_progress=True, print_coststats=True, print_costdev=True)
 
 # Check the performance
 print(Fore.BLUE + '-' * 100 + Fore.RESET)

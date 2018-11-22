@@ -46,7 +46,7 @@ class Momentum:
                 v['d' + k] = self.beta * v['d' + k] + (1 - self.beta) * grad
 
                 # Update parameters
-                layer.params[k] -= lr * v['d' + k]
+                layer.params[k] = layer.params[k] - lr * v['d' + k]
 
 
 class Adam:
@@ -111,7 +111,7 @@ class Adam:
                 s_corrected = s['d' + k] / (1 - self.beta2 ** self.t)
 
                 # Update parameters
-                layer.params[k] -= lr * v_corrected / (np.sqrt(s_corrected) + self.epsilon)
+                layer.params[k] = layer.params[k] - lr * v_corrected / (np.sqrt(s_corrected) + self.epsilon)
 
         # Update epoch
         self.t += 1
