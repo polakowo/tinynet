@@ -17,38 +17,36 @@ class Momentum:
         # Increasing beta will smooth out the gradients
         self.beta = beta
 
-    def initialize_params(self, layer_params):
+    def init_params(self, layers):
         """
         Initialize parameters
         """
         self.layer_v = []
 
-        for l, params in enumerate(layer_params):
+        for l, layer in enumerate(layers):
             v = {}
 
-            for k in params.keys():
-                v['d' + k] = np.zeros(params[k].shape)
+            for k in layer.params:
+                v['d' + k] = np.zeros(layer.params[k].shape)
 
             self.layer_v.append(v)
 
-    def update_params(self, layer_params, layer_grads, learning_rate):
+    def update_params(self, layers, lr):
         """
         Update parameters
         """
         # Momentum update for each parameter in a layer
-        for l, params in enumerate(layer_params):
+        for l, layer in enumerate(layers):
             v = self.layer_v[l]
 
-            for k in params.keys():
-                grad = layer_grads[l]['d' + k]
+            for k in layer.params:
+                grad = layer.grads['d' + k]
 
                 # Compute velocities
                 v['d' + k] = self.beta * v['d' + k] + (1 - self.beta) * grad
 
                 # Update parameters
-                layer_params[l][k] -= learning_rate * v['d' + k]
-
-        return layer_params
+                layer.params[k] -= lr * v['d' + k]
 
 
 class Adam:
@@ -68,7 +66,7 @@ class Adam:
         # Epsilon is required to prevent division by zero
         self.epsilon = epsilon
 
-    def initialize_params(self, layer_params):
+    def init_params(self, layers):
         """
         Initialize parameters
         """
@@ -79,28 +77,29 @@ class Adam:
         # Initialize timestep
         self.t = 1
 
-        for l, params in enumerate(layer_params):
+        for l, layer in enumerate(layers):
             v = {}
             s = {}
 
-            for k in params.keys():
-                v['d' + k] = np.zeros(params[k].shape)
-                s['d' + k] = np.zeros(params[k].shape)
+            for k in layer.params:
+                v['d' + k] = np.zeros(layer.params[k].shape)
+                s['d' + k] = np.zeros(layer.params[k].shape)
 
             self.layer_v.append(v)
             self.layer_s.append(s)
 
-    def update_params(self, layer_params, layer_grads, learning_rate):
+    def update_params(self, layers, lr):
         """
         Update parameters
         """
         # Perform Adam update on all parameters in a layer
-        for l, params in enumerate(layer_params):
+        for l, layer in enumerate(layers):
             v = self.layer_v[l]
             s = self.layer_s[l]
 
-            for k in params.keys():
-                grad = layer_grads[l]['d' + k]
+            for k in layer.params:
+                grad = layer.grads['d' + k]
+
                 # Update biased first moment estimate
                 v['d' + k] = self.beta1 * v['d' + k] + (1 - self.beta1) * grad
                 # Update biased second raw moment estimate
@@ -112,8 +111,7 @@ class Adam:
                 s_corrected = s['d' + k] / (1 - self.beta2 ** self.t)
 
                 # Update parameters
-                layer_params[l][k] -= learning_rate * v_corrected / (np.sqrt(s_corrected) + self.epsilon)
+                layer.params[k] -= lr * v_corrected / (np.sqrt(s_corrected) + self.epsilon)
 
         # Update epoch
         self.t += 1
-        return layer_params

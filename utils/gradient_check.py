@@ -1,7 +1,5 @@
 import numpy as np
 
-from colorama import Fore
-
 from utils import regularizers
 
 
@@ -115,8 +113,8 @@ class GradientCheck:
         # Difference between the approximated gradient and the backward propagation gradient
         diff = calculate_diff(grad_theta, gradapprox)
         if diff > 2e-7:
-            print("%s%s%s" % (Fore.RED, "Failed gradient checking", Fore.RESET))
+            print("Failed gradient checking")
         else:
-            print("%s%s%s" % (Fore.GREEN, "Passed gradient checking", Fore.RESET))
+            print("Passed gradient checking")
 
         return diff

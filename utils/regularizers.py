@@ -2,7 +2,7 @@ import numpy as np
 
 # Regularization is used for penalizing complex models
 # It forces the downstream hidden units not to rely too much on the previous units by introducing noise
-# http://ruder.io/optimizing-gradient-descent/index.html#minibatchgradientdescent
+# http://ruder.io/optimizing-gradient-descent/index.html
 
 
 class L2:
@@ -19,11 +19,11 @@ class L2:
         # Encourages the mean of the weights toward 0, with a normal (bell-shaped or Gaussian) distribution
         self._lambda = _lambda
 
-    def compute_term(self, layer_params, m):
+    def compute_term(self, layers, m):
         """
         Compute the L2 regularization term
         """
-        L2 = np.sum([np.sum(np.square(params['W'])) for params in layer_params])
+        L2 = np.sum([np.sum(np.square(layer.params['W'])) for layer in layers])
         return 1 / 2 * self._lambda / m * L2
 
     def compute_term_derivative(self, W, m):
@@ -43,37 +43,35 @@ class Dropout:
     # Use dropout only during training, not during test time
     """
 
-    def __init__(self, keep_probs):
-        # Probability of keeping a neuron in each layer
-        self.keep_probs = keep_probs
+    def __init__(self, keep_prob, rng=None):
+        # Probability of keeping a neuron
+        self.keep_prob = keep_prob
+        # Randomize
+        if rng is None:
+            rng = np.random.RandomState(0)
+        self.rng = rng
 
-    def dropout_forward(self, A, l):
+    def dropout_forward(self, input):
         """
         Apply the dropout regularization to the activation output
         """
-        keep_prob = self.keep_probs[l]
-
-        KEEP_MASK = np.random.rand(A.shape[0], A.shape[1])
+        KEEP_MASK = self.rng.rand(input.shape[0], input.shape[1])
         # Shut down each neuron of the layer with a probability of 1−keep_prob
-        KEEP_MASK = KEEP_MASK < keep_prob
-        A = A * KEEP_MASK
+        KEEP_MASK = KEEP_MASK < self.keep_prob
+        output = input * KEEP_MASK
         # Divide each dropout layer by keep_prob to keep the same expected value for the activation
-        A = A / keep_prob
+        output = output / self.keep_prob
 
-        dropout_cache = KEEP_MASK
-        return A, dropout_cache
+        self.KEEP_MASK = KEEP_MASK
+        return output
 
-    def dropout_backward(self, dA, dropout_cache, l):
+    def dropout_backward(self, dinput):
         """
         Partial derivative of J with respect to activation output
         """
-        keep_prob = self.keep_probs[l]
-
-        # dJ/dA = dJ/dA' * dA'/dA
-        KEEP_MASK = dropout_cache
         # Apply the mask to shut down the same neurons as during the forward propagation
-        dA = dA * KEEP_MASK
+        doutput = dinput * self.KEEP_MASK
         # Scale the value of neurons that haven't been shut down
-        dA = dA / keep_prob
+        doutput = doutput / self.keep_prob
 
-        return dA
+        return doutput

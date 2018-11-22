@@ -1,6 +1,8 @@
 import numpy as np
 import h5py
 import scipy.io
+import sklearn
+
 import os
 dirname = os.path.dirname(__file__)
 
@@ -33,5 +35,19 @@ def load_2D_dataset():
     train_Y = data['y'].T
     test_X = data['Xval'].T
     test_Y = data['yval'].T
+
+    return train_X, train_Y, test_X, test_Y
+
+
+def load_dataset():
+    np.random.seed(3)
+    train_X, train_Y = sklearn.datasets.make_moons(n_samples=300, noise=.2)
+    test_X, test_Y = sklearn.datasets.make_moons(n_samples=100, noise=.2)
+
+    # Visualize the data
+    train_X = train_X.T
+    train_Y = train_Y.reshape((1, train_Y.shape[0]))
+    test_X = test_X.T
+    test_Y = test_Y.reshape((1, train_Y.shape[0]))
 
     return train_X, train_Y, test_X, test_Y
