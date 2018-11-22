@@ -2,17 +2,15 @@ import numpy as np
 from tabulate import tabulate
 from colorama import Fore
 
-from data import load_dataset
+from data import load_2D_dataset
 from model import DeepNN
-from utils.regularizers import Dropout
-from utils.optimizers import Momentum, Adam
 
 from utils.layer import Layer
 from utils import activations
 
 
 # Load data
-train_X, train_Y, test_X, test_Y = load_dataset()
+train_X, train_Y, test_X, test_Y = load_2D_dataset()
 
 # Set up the model
 dnn = DeepNN([

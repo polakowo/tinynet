@@ -1,7 +1,7 @@
 import numpy as np
 import math
 
-from tqdm import trange
+from tqdm import tqdm
 import asciichartpy
 from colorama import Fore
 from tabulate import tabulate
@@ -204,12 +204,13 @@ class DeepNN:
         if print_progress:
             print(Fore.BLUE + '-' * 100 + Fore.RESET)
             print("Progress:")
-        with trange(self.num_epochs,
-                    disable=not print_progress,
-                    bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.YELLOW, Fore.RESET),
-                    ascii=True,
-                    ncols=100) as t:
-            for epoch in t:
+        with tqdm(total=self.num_epochs,
+                  disable=not print_progress,
+                  bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.YELLOW, Fore.RESET),
+                  ascii=True,
+                  ncols=100) as pbar:
+
+            for epoch in range(self.num_epochs):
                 if self.mini_batch_size is not None:
                     # Divide the dataset into mini-batched based on their size
                     # We increment the seed to reshuffle differently the dataset after each epoch
@@ -229,7 +230,6 @@ class DeepNN:
                     # Compute cost
                     cost = self.compute_cost(output, mini_Y)
                     costs.append(cost)
-                    t.set_description("Cost %.2f" % cost)
 
                     # Backward propagation
                     self.propagate_backward(output, mini_Y)
@@ -246,6 +246,9 @@ class DeepNN:
                         self.optimizer.update_params(self.layers, lr)
                     else:
                         self.update_params()
+
+                pbar.set_description("Cost %.2f" % cost)
+                pbar.update(1)
 
         # Success: The model has been trained
 
