@@ -1,7 +1,7 @@
 import numpy as np
 import math
 
-from tqdm import tqdm
+from tqdm import trange
 import asciichartpy
 from colorama import Fore
 from tabulate import tabulate
@@ -166,7 +166,11 @@ class DeepNN:
 
         return mini_batches
 
-    def train(self, X, Y, print_dataset=False, print_progress=False, print_cost=False):
+    def train(self, X, Y,
+              print_datainfo=False,
+              print_progress=True,
+              print_coststats=False,
+              print_costdev=False):
         """
         Train an L-layer neural network
 
@@ -176,7 +180,7 @@ class DeepNN:
         """
 
         # Overview of the complexity
-        if print_dataset:
+        if print_datainfo:
             print(Fore.BLUE + '-' * 100 + Fore.RESET)
             print("Dataset:")
 
@@ -204,13 +208,11 @@ class DeepNN:
         if print_progress:
             print(Fore.BLUE + '-' * 100 + Fore.RESET)
             print("Progress:")
-        with tqdm(total=self.num_epochs,
-                  disable=not print_progress,
-                  bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.YELLOW, Fore.RESET),
-                  ascii=True,
-                  ncols=100) as pbar:
+        with trange(self.num_epochs,
+                    disable=not print_progress,
+                    ncols=100) as pbar:
 
-            for epoch in range(self.num_epochs):
+            for epoch in pbar:
                 if self.mini_batch_size is not None:
                     # Divide the dataset into mini-batched based on their size
                     # We increment the seed to reshuffle differently the dataset after each epoch
@@ -247,19 +249,29 @@ class DeepNN:
                     else:
                         self.update_params()
 
-                pbar.set_description("Cost %.2f" % cost)
-                pbar.update(1)
-
         # Success: The model has been trained
 
         costs = np.array(costs)
+        # Print cost statistics
+        if print_coststats:
+            print(Fore.BLUE + '-' * 100 + Fore.RESET)
+            print("Cost stats:")
+            print(tabulate([[
+                '%.4f (%i)' % (np.max(costs), np.argmax(costs)),
+                '%.4f (%i)' % (np.min(costs), np.argmin(costs)),
+                '%.4f' % costs[-1],
+                '%.4f' % np.mean(costs),
+                '%.4f' % np.std(costs)
+            ]],
+                headers=['max', 'min', 'last', 'mean', 'std'],
+                tablefmt="presto"))
         # Print cost as a function of time
-        if print_cost:
+        if print_costdev:
             print(Fore.BLUE + '-' * 100 + Fore.RESET)
             print("Cost development:")
             points = 89
             step_costs = costs[[max(0, math.floor(i / points * len(costs)) - 1) for i in range(0, points + 1)]]
-            print(Fore.YELLOW + asciichartpy.plot(step_costs, {'height': 4}) + Fore.RESET)
+            print(asciichartpy.plot(step_costs, {'height': 4}))
 
         return costs
 
