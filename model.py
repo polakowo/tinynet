@@ -23,6 +23,8 @@ class DeepNN:
         # A list of layer instances
         assert(layers is not None)
         self.layers = layers
+        for index, layer in enumerate(layers):
+            layer.index = index
 
         # Learning rate
         # A key differentiator between convergence and divergence
@@ -70,7 +72,7 @@ class DeepNN:
         Propagate forwards to calculate the output
         """
         output = X
-        for index, layer in enumerate(self.layers):
+        for l, layer in enumerate(self.layers):
             output = layer.propagate_forward(output, train=train)
 
         return output

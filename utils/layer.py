@@ -46,20 +46,27 @@ class Layer:
             rng = np.random.RandomState(0)
         self.rng = rng
 
-    def init_params(self, prev_n):
+    def init_params(self, prev_n, W=None, b=None):
         self.params = {}
         self.cache = {}
         self.grads = {}
 
-        # Poor initialization can lead to vanishing/exploding gradients
-        if self.init == 'xavier':
-            # Random initialization is used to break symmetry
-            self.params['W'] = self.rng.randn(self.n, prev_n) * np.sqrt(1. / prev_n)
-        elif self.init == 'he':
-            # He initialization works well for networks with ReLU activations
-            self.params['W'] = self.rng.randn(self.n, prev_n) * np.sqrt(2. / prev_n)
-        # Use zeros initialization for the biases
-        self.params['b'] = np.zeros((self.n, 1))
+        if W is not None:
+            self.params['W'] = W
+        else:
+            # Poor initialization can lead to vanishing/exploding gradients
+            if self.init == 'xavier':
+                # Random initialization is used to break symmetry
+                self.params['W'] = self.rng.randn(self.n, prev_n) * np.sqrt(1. / prev_n)
+            elif self.init == 'he':
+                # He initialization works well for networks with ReLU activations
+                self.params['W'] = self.rng.randn(self.n, prev_n) * np.sqrt(2. / prev_n)
+
+        if b is not None:
+            self.params['b'] = b
+        else:
+            # Use zeros initialization for the biases
+            self.params['b'] = np.zeros((self.n, 1))
 
     #########################
     # FORWARD: FUN-1 -> FUN #
