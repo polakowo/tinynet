@@ -1,7 +1,7 @@
 import numpy as np
 
-from utils import activations
-from utils import regularizers
+from deepnn.utils import activations
+from deepnn.utils import regularizers
 
 
 class Layer:
@@ -93,7 +93,7 @@ class Layer:
 
         return output
 
-    def propagate_forward(self, input, train=True):
+    def propagate_forward(self, input, predict=False):
         """
         Forward propagation
         """
@@ -105,7 +105,7 @@ class Layer:
         self.cache['activation'] = output
         output = self.activation_forward(output)
 
-        if train and isinstance(self.regularizer, regularizers.Dropout):
+        if not predict and isinstance(self.regularizer, regularizers.Dropout):
             # Randomly shut down some neurons for each sample in input
             # Cache is stored in the Dropout class
             output = self.regularizer.dropout_forward(output)
