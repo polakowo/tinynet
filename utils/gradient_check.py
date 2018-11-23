@@ -71,9 +71,7 @@ class GradientCheck:
         """
         Check whether the model's backpropagation works properly
         """
-        # One iteration of gradient descent to get gradients
-        self.model.init_params(X)
-        output = self.model.propagate_forward(X, train=True)
+        output = self.model.propagate_forward(X, train=False)
         self.model.propagate_backward(output, Y)
 
         # Roll parameters dictionary into a large (n, 1) vector
@@ -94,7 +92,7 @@ class GradientCheck:
             theta_plus[i] = theta_plus[i] + self.epsilon
             # Calculate new cost
             unroll_params(theta_plus, self.model.layers)
-            output_plus = self.model.propagate_forward(X, train=True)
+            output_plus = self.model.propagate_forward(X, train=False)
             J_plus[i] = self.model.compute_cost(output_plus, Y)
 
             # Subtract epsilon from the parameter
@@ -102,11 +100,14 @@ class GradientCheck:
             theta_minus[i] = theta_minus[i] - self.epsilon
             # Calculate new cost
             unroll_params(theta_minus, self.model.layers)
-            output_minus = self.model.propagate_forward(X, train=True)
+            output_minus = self.model.propagate_forward(X, train=False)
             J_minus[i] = self.model.compute_cost(output_minus, Y)
 
             # Approximate the partial derivative, error is eps^2
             grad_approx[i] = (J_plus[i] - J_minus[i]) / (2 * self.epsilon)
+
+        # Reset model params
+        unroll_params(param_theta, self.model.layers)
 
         # Difference between the approximated gradient and the backward propagation gradient
         diff = calculate_diff(grad_theta, grad_approx)
