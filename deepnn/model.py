@@ -2,14 +2,11 @@ import numpy as np
 import math
 import random
 
-from tqdm import trange
-import asciichartpy
-from colorama import Fore
-from tabulate import tabulate
+from tqdm.auto import trange
 
 from deepnn.utils import regularizers
 from deepnn.utils import optimizers
-from deepnn.utils import gradcheck
+from deepnn.utils import grad_check
 
 
 class DeepNN:
@@ -170,12 +167,7 @@ class DeepNN:
 
         return mini_batches
 
-    def train(self, X, Y,
-              print_datainfo=False,
-              print_progress=True,
-              print_coststats=False,
-              print_costdev=False,
-              gradient_checking=False):
+    def fit(self, X, Y, gradient_checking=False):
         """
         Train an L-layer neural network
 
@@ -183,21 +175,6 @@ class DeepNN:
         Y must be of shape (1, m)
         where n is the number of features and m is the number of datasets
         """
-
-        # Overview of the complexity
-        if print_datainfo:
-            print(Fore.BLUE + '-' * 100 + Fore.RESET)
-            print("Dataset:")
-
-            columns = []
-            columns.append(('features', X.shape[0]))
-            columns.append(('samples', X.shape[1]))
-            if self.mini_batch_size is not None:
-                columns.append(('mini-batch-size', self.mini_batch_size))
-                columns.append(('mini-batches', math.floor(X.shape[1] / self.mini_batch_size)))
-
-            headers, row = zip(*columns)
-            print(tabulate([row], headers=headers, tablefmt="presto"))
 
         # Initialize parameters dictionary
         self.init_params(X)
@@ -214,12 +191,7 @@ class DeepNN:
 
         costs = []
         # Progress information is displayed and updated dynamically in the console
-        if print_progress:
-            print(Fore.BLUE + '-' * 100 + Fore.RESET)
-            print("Progress:")
-        with trange(self.num_epochs,
-                    disable=not print_progress,
-                    ncols=100) as pbar:
+        with trange(self.num_epochs) as pbar:
 
             for epoch in pbar:
                 if self.mini_batch_size is not None:
@@ -266,48 +238,20 @@ class DeepNN:
                         # Check a random sample
                         # Feeding the whole batch yields high errors
                         m = X.shape[1]
-                        rand_index = random.randint(0, m)
+                        rand_index = random.randint(0, m - 1)
                         sample_X = X[:, rand_index].reshape(X.shape[0], 1)
                         sample_Y = Y[:, rand_index].reshape(Y.shape[0], 1)
                         relative_error = self.gradient_checking(sample_X, sample_Y)
-                        relative_errors.append((epoch, rand_index, relative_error))
+                        if relative_error <= 1e-6:
+                            status = 'OK'
+                        elif relative_error <= 1e-2:
+                            status = 'WARNING'
+                        else:
+                            status = 'ERROR'
+                        relative_errors.append((epoch, rand_index, status, relative_error))
 
-        # Success: The model has been trained
         if gradient_checking:
-            print(Fore.BLUE + '-' * 100 + Fore.RESET)
-            print("Gradient Checking:")
-
-            rows = []
-            for epoch, rand_index, relative_error in relative_errors:
-                if relative_error <= 1e-6:
-                    rows.append((epoch, rand_index, 'OK', relative_error))
-                elif relative_error <= 1e-2:
-                    rows.append((epoch, rand_index, 'WARNING', relative_error))
-                else:
-                    rows.append((epoch, rand_index, 'ERROR', relative_error))
-            print(tabulate(rows, headers=['epoch', 'sample', 'status', 'error'], tablefmt="presto"))
-
-        costs = np.array(costs)
-        # Print cost statistics
-        if print_coststats:
-            print(Fore.BLUE + '-' * 100 + Fore.RESET)
-            print("Cost stats:")
-            print(tabulate([[
-                '%.4f (%i)' % (np.max(costs), np.argmax(costs)),
-                '%.4f (%i)' % (np.min(costs), np.argmin(costs)),
-                '%.4f' % costs[-1],
-                '%.4f' % np.mean(costs),
-                '%.4f' % np.std(costs)
-            ]],
-                headers=['max', 'min', 'last', 'mean', 'std'],
-                tablefmt="presto"))
-        # Print cost as a function of time
-        if print_costdev:
-            print(Fore.BLUE + '-' * 100 + Fore.RESET)
-            print("Cost development:")
-            points = 89
-            step_costs = costs[[max(0, math.floor(i / points * len(costs)) - 1) for i in range(0, points + 1)]]
-            print(asciichartpy.plot(step_costs, {'height': 4}))
+            return costs, relative_errors
 
         return costs
 
@@ -330,8 +274,8 @@ class DeepNN:
         self.propagate_backward(output, Y)
 
         # Roll parameters dictionary into a large (n, 1) vector
-        param_theta = gradcheck.roll_params(self.layers)
-        grad_theta = gradcheck.roll_params(self.layers, grads=True)
+        param_theta = grad_check.roll_params(self.layers)
+        grad_theta = grad_check.roll_params(self.layers, grads=True)
 
         # Initialize vectors of the same shape
         num_params = param_theta.shape[0]
@@ -344,7 +288,7 @@ class DeepNN:
             theta_plus = np.copy(param_theta)
             theta_plus[i] = theta_plus[i] + epsilon
             # Calculate new cost
-            gradcheck.unroll_params(theta_plus, self.layers)
+            grad_check.unroll_params(theta_plus, self.layers)
             output_plus = self.propagate_forward(X, predict=True)
             cost_plus = self.compute_cost(output_plus, Y)
 
@@ -352,7 +296,7 @@ class DeepNN:
             theta_minus = np.copy(param_theta)
             theta_minus[i] = theta_minus[i] - epsilon
             # Calculate new cost
-            gradcheck.unroll_params(theta_minus, self.layers)
+            grad_check.unroll_params(theta_minus, self.layers)
             output_minus = self.propagate_forward(X, predict=True)
             cost_minus = self.compute_cost(output_minus, Y)
 
@@ -360,10 +304,10 @@ class DeepNN:
             grad_approx[i] = (cost_plus - cost_minus) / (2 * epsilon)
 
         # Reset model params
-        gradcheck.unroll_params(param_theta, self.layers)
+        grad_check.unroll_params(param_theta, self.layers)
 
         # Difference between the approximated gradient and the backward propagation gradient
-        relative_error = gradcheck.calculate_diff(grad_theta, grad_approx)
+        relative_error = grad_check.calculate_diff(grad_theta, grad_approx)
 
         return relative_error
 
@@ -371,19 +315,11 @@ class DeepNN:
     # PREDICT #
     ###########
 
-    def predict(self, X, Y, threshold=0.5):
+    def predict(self, X):
         """
         Predict using forward propagation and a classification threshold
         """
-        m = X.shape[1]
-
         # Propagate forward with the parameters learned previously
         output = self.propagate_forward(X, predict=True)
-        # Classify the probabilities
-        output = np.array(output, copy=True)
-        output[output <= threshold] = 0
-        output[output > threshold] = 1
-        # Compute the fraction of correct predictions
-        accuracy = np.sum((output == Y) / m)
 
-        return output, accuracy
+        return output
