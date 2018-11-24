@@ -2,9 +2,7 @@ import numpy as np
 
 
 def roll_params(layers, grads=False):
-    """
-    Roll the parameters from layers into a single (n, 1) vector
-    """
+    # Roll the parameters from layers into a single (n, 1) vector
     theta = np.zeros((0, 1))
 
     for layer in layers:
@@ -23,9 +21,7 @@ def roll_params(layers, grads=False):
 
 
 def unroll_params(theta, layers, grads=False):
-    """
-    Unroll the parameters from a vector and save to layers
-    """
+    # Unroll the parameters from a vector and save to layers
     i = 0
     for layer in layers:
         if grads:
@@ -41,9 +37,6 @@ def unroll_params(theta, layers, grads=False):
 
 
 def calculate_diff(grad_theta, grad_approx):
-    """
-    Calculate the difference between two vectors using norm
-    """
     # np.linalg.norm apply for matric equal to Frobenius norm
     numerator = np.linalg.norm(grad_theta - grad_approx)
     denominator = np.linalg.norm(grad_theta) + np.linalg.norm(grad_approx)

@@ -18,9 +18,7 @@ class Momentum:
         self.beta = beta
 
     def init_params(self, layers):
-        """
-        Initialize parameters
-        """
+        # Initialize moment vector
         self.layer_v = []
 
         for l, layer in enumerate(layers):
@@ -31,10 +29,7 @@ class Momentum:
 
             self.layer_v.append(v)
 
-    def update_params(self, layers, lr):
-        """
-        Update parameters
-        """
+    def update_params(self, layers, lr, t):
         # Momentum update for each parameter in a layer
         for l, layer in enumerate(layers):
             v = self.layer_v[l]
@@ -45,8 +40,11 @@ class Momentum:
                 # Compute velocities
                 v['d' + k] = self.beta * v['d' + k] + (1 - self.beta) * grad
 
+                # Compute bias-corrected first moment estimate
+                v_corrected = v['d' + k] / (1 - self.beta ** t)
+
                 # Update parameters
-                layer.params[k] = layer.params[k] - lr * v['d' + k]
+                layer.params[k] = layer.params[k] - lr * v_corrected
 
 
 class Adam:
@@ -67,15 +65,10 @@ class Adam:
         self.epsilon = epsilon
 
     def init_params(self, layers):
-        """
-        Initialize parameters
-        """
         # Initialize 1st moment vector
         self.layer_v = []
         # Initialize 2nd moment vector
         self.layer_s = []
-        # Initialize timestep
-        self.t = 1
 
         for l, layer in enumerate(layers):
             v = {}
@@ -88,10 +81,7 @@ class Adam:
             self.layer_v.append(v)
             self.layer_s.append(s)
 
-    def update_params(self, layers, lr):
-        """
-        Update parameters
-        """
+    def update_params(self, layers, lr, t):
         # Perform Adam update on all parameters in a layer
         for l, layer in enumerate(layers):
             v = self.layer_v[l]
@@ -106,12 +96,9 @@ class Adam:
                 s['d' + k] = self.beta2 * s['d' + k] + (1 - self.beta2) * np.square(grad)
 
                 # Compute bias-corrected first moment estimate
-                v_corrected = v['d' + k] / (1 - self.beta1 ** self.t)
+                v_corrected = v['d' + k] / (1 - self.beta1 ** t)
                 # Compute bias-corrected second raw moment estimate
-                s_corrected = s['d' + k] / (1 - self.beta2 ** self.t)
+                s_corrected = s['d' + k] / (1 - self.beta2 ** t)
 
                 # Update parameters
                 layer.params[k] = layer.params[k] - lr * v_corrected / (np.sqrt(s_corrected) + self.epsilon)
-
-        # Update epoch
-        self.t += 1

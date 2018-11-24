@@ -10,7 +10,7 @@ class Layer:
                  activation=activations.tanh,
                  init='xavier',
                  regularizer=None,
-                 batch_normalizer=None,
+                 batch_norm=None,
                  rng=None):
 
         # The number of units in the layer
@@ -36,23 +36,19 @@ class Layer:
         self.regularizer = regularizer
 
         # Batch normalizer
-        # # https://wiseodd.github.io/techblog/2016/07/04/batchnorm/
-        # Makes deeper layers more robust to changes to the weights in the previous layers
-        # Also, similar to dropout, adds some noise to each hidden layer's activations
-        # The smaller the mini-batches are, the more noise they produce, the more regularization takes place
-        self.batch_normalizer = batch_normalizer
+        self.batch_norm = batch_norm
 
         if rng is None:
             rng = np.random.RandomState(0)
         self.rng = rng
 
-    def init_params(self, prev_n, W=None, b=None):
+    def init_params(self, prev_n, **params):
         self.params = {}
         self.cache = {}
         self.grads = {}
 
-        if W is not None:
-            self.params['W'] = W
+        if 'W' in params:
+            self.params['W'] = params['W']
         else:
             # Poor initialization can lead to vanishing/exploding gradients
             if self.init == 'xavier':
@@ -62,53 +58,77 @@ class Layer:
                 # He initialization works well for networks with ReLU activations
                 self.params['W'] = self.rng.randn(self.n, prev_n) * np.sqrt(2. / prev_n)
 
-        if b is not None:
-            self.params['b'] = b
+        if 'b' in params:
+            self.params['b'] = params['b']
         else:
             # Use zeros initialization for the biases
             self.params['b'] = np.zeros((self.n, 1))
+
+        if self.batch_norm is not None:
+            # Learn two extra parameters for every dimension to get optimum scaling and
+            # shifting of activation outputs over zero means and unit variances towards
+            # elimination of internal covariate shift.
+
+            if 'gamma' in params:
+                self.params['gamma'] = params['gamma']
+            else:
+                # There is no symmetry breaking to consider here
+                # GD adapts their values to fit the corresponding feature's distribution
+                self.params['gamma'] = np.ones((self.n, 1))
+
+            if 'beta' in params:
+                self.params['beta'] = params['beta']
+            else:
+                self.params['beta'] = np.zeros((self.n, 1))
 
     #########################
     # FORWARD: FUN-1 -> FUN #
     #########################
 
-    def linear_forward(self, input):
-        """
-        Apply linear function to the parameters
-        """
-        W = self.params['W']
-        b = self.params['b']
-
+    def linear_forward(self, input, W, b):
         output = W.dot(input) + b
         assert(output.shape == (W.shape[0], input.shape[1]))
 
-        return output
+        cache = (input, W, b)
+        return output, cache
 
     def activation_forward(self, input):
-        """
-        Apply activation function to the previous output
-        """
         output = self.activation(input)
         assert(output.shape == input.shape)
 
-        return output
+        cache = (input)
+        return output, cache
 
     def propagate_forward(self, input, predict=False):
-        """
-        Forward propagation
-        """
         output = input
 
-        self.cache['linear'] = output
-        output = self.linear_forward(output)
+        W = self.params['W']
+        b = self.params['b']
+        output, cache = self.linear_forward(output, W, b)
+        if not predict:
+            self.cache['linear'] = cache
 
-        self.cache['activation'] = output
-        output = self.activation_forward(output)
+        if self.batch_norm is not None:
+            # Normalize the linear output
+            # Cache is stored in the BatchNorm class
+            # But parameters are stored in the layer
+            gamma = self.params['gamma']
+            beta = self.params['beta']
+            if predict:
+                output = self.batch_norm.forward_predict(output, gamma, beta)
+            else:
+                output, cache = self.batch_norm.forward(output, gamma, beta)
+                self.cache['batch_norm'] = cache
+
+        output, cache = self.activation_forward(output)
+        if not predict:
+            self.cache['activation'] = cache
 
         if not predict and isinstance(self.regularizer, regularizers.Dropout):
             # Randomly shut down some neurons for each sample in input
             # Cache is stored in the Dropout class
-            output = self.regularizer.dropout_forward(output)
+            output, cache = self.regularizer.forward(output)
+            self.cache['dropout'] = cache
 
         return output
 
@@ -117,23 +137,18 @@ class Layer:
     #########################
 
     def activation_backward(self, dinput, cache):
-        """
-        Partial derivative of J with respect to linear output
-        """
-        doutput = dinput * self.dactivation(cache)
-        assert(doutput.shape == cache.shape)
+        input = cache
+
+        doutput = dinput * self.dactivation(input)
+        assert(doutput.shape == input.shape)
 
         return doutput
 
     def linear_backward(self, dinput, cache):
-        """
-        Partial derivative of J with respect to parameters
-        """
-        m = cache.shape[1]
-        W = self.params['W']
-        b = self.params['b']
+        m = dinput.shape[1]
+        input, W, b = cache
 
-        dW = 1. / m * np.dot(dinput, cache.T)
+        dW = 1. / m * np.dot(dinput, input.T)
         assert(dW.shape == W.shape)
 
         if isinstance(self.regularizer, regularizers.L2):
@@ -144,22 +159,26 @@ class Layer:
         assert(db.shape == b.shape)
 
         doutput = np.dot(W.T, dinput)
-        assert(doutput.shape == cache.shape)
+        assert(doutput.shape == input.shape)
 
         return doutput, dW, db
 
     def propagate_backward(self, dinput):
-        """
-        Backward propagation
-        """
         doutput = dinput
 
         if isinstance(self.regularizer, regularizers.Dropout):
             # Apply the mask to shut down the same neurons as in the forward propagation
-            doutput = self.regularizer.dropout_backward(doutput)
+            cache = self.cache['dropout']
+            doutput = self.regularizer.backward(doutput, cache)
 
         cache = self.cache['activation']
         doutput = self.activation_backward(doutput, cache)
+
+        if self.batch_norm is not None:
+            cache = self.cache['batch_norm']
+            doutput, dgamma, dbeta = self.batch_norm.backward(doutput, cache)
+            self.grads['dgamma'] = dgamma
+            self.grads['dbeta'] = dbeta
 
         cache = self.cache['linear']
         doutput, dW, db = self.linear_backward(doutput, cache)

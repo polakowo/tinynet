@@ -20,16 +20,10 @@ class L2:
         self._lambda = _lambda
 
     def compute_term(self, layers, m):
-        """
-        Compute the L2 regularization term
-        """
         L2 = np.sum([np.sum(np.square(layer.params['W'])) for layer in layers])
         return 1 / 2 * self._lambda / m * L2
 
     def compute_term_derivative(self, W, m):
-        """
-        Compute the derivative of the term with respect to the weights
-        """
         return self._lambda / m * W
 
 
@@ -51,10 +45,7 @@ class Dropout:
             rng = np.random.RandomState(0)
         self.rng = rng
 
-    def dropout_forward(self, input):
-        """
-        Apply the dropout regularization to the activation output
-        """
+    def forward(self, input):
         KEEP_MASK = self.rng.rand(input.shape[0], input.shape[1])
         # Shut down each neuron of the layer with a probability of 1−keep_prob
         KEEP_MASK = KEEP_MASK < self.keep_prob
@@ -62,15 +53,13 @@ class Dropout:
         # Divide each dropout layer by keep_prob to keep the same expected value for the activation
         output = output / self.keep_prob
 
-        self.KEEP_MASK = KEEP_MASK
-        return output
+        cache = KEEP_MASK
+        return output, cache
 
-    def dropout_backward(self, dinput):
-        """
-        Partial derivative of J with respect to activation output
-        """
+    def backward(self, dinput, cache):
+        KEEP_MASK = cache
         # Apply the mask to shut down the same neurons as during the forward propagation
-        doutput = dinput * self.KEEP_MASK
+        doutput = dinput * KEEP_MASK
         # Scale the value of neurons that haven't been shut down
         doutput = doutput / self.keep_prob
 

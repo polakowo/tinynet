@@ -1,6 +1,5 @@
 import numpy as np
 import math
-import random
 
 from tqdm.auto import trange
 
@@ -67,9 +66,6 @@ class DeepNN:
     #######################
 
     def propagate_forward(self, X, predict=False):
-        """
-        Propagate forwards to calculate the output
-        """
         output = X
         for l, layer in enumerate(self.layers):
             output = layer.propagate_forward(output, predict=predict)
@@ -81,9 +77,6 @@ class DeepNN:
     ########
 
     def compute_cost(self, output, Y):
-        """
-        Calculate the cost
-        """
         m = Y.shape[1]
 
         # Cross-entropy
@@ -108,9 +101,6 @@ class DeepNN:
     ########################
 
     def propagate_backward(self, output, Y):
-        """
-        Propagate backwards to derive the gradients in each layer
-        """
         Y = Y.reshape(output.shape)
 
         with np.errstate(divide='ignore', invalid='ignore'):
@@ -130,9 +120,6 @@ class DeepNN:
     #################
 
     def update_params(self):
-        """
-        Update the parameters using gradient descent
-        """
         for layer in self.layers:
             for key in layer.params:
                 # Update the rule for each parameter in each layer
@@ -143,9 +130,6 @@ class DeepNN:
     #########
 
     def generate_mini_batches(self, X, Y, rng=None):
-        """
-        Shuffe and partition the dataset to build mini-batches
-        """
         if rng is None:
             pass
         m = X.shape[1]
@@ -194,10 +178,12 @@ class DeepNN:
         with trange(self.num_epochs) as pbar:
 
             for epoch in pbar:
+                # Diversify outputs by epoch but make them predictable
+                rng = np.random.RandomState(epoch)
+
                 if self.mini_batch_size is not None:
                     # Divide the dataset into mini-batched based on their size
                     # We increment the seed to reshuffle differently the dataset after each epoch
-                    rng = np.random.RandomState(epoch)
                     mini_batches = self.generate_mini_batches(X, Y, rng=rng)
                 else:
                     # Batch gradient descent
@@ -223,43 +209,51 @@ class DeepNN:
                     else:
                         lr = self.lr
 
+                    # Check the backpropagation algorithm after learning some parameters
+                    # Only one mini batch every epoch
+                    if gradient_checking and i == 0:
+                        # Only one test every 10% epochs
+                        if (epoch + 1) % (math.floor(self.num_epochs / 10)) == 0:
+                            relative_error = self.gradient_checking(mini_X, mini_Y)
+
+                            if relative_error <= 1e-6:
+                                status = 'OK'
+                            elif relative_error <= 1e-2:
+                                status = 'WARNING'
+                            else:
+                                status = 'ERROR'
+                            relative_errors.append((epoch, status, relative_error))
+
                     # Delegate the task to the optimizer if set
                     if isinstance(self.optimizer, optimizers.Momentum):
-                        self.optimizer.update_params(self.layers, lr)
+                        t = epoch + 1
+                        self.optimizer.update_params(self.layers, lr, t)
                     elif isinstance(self.optimizer, optimizers.Adam):
-                        self.optimizer.update_params(self.layers, lr)
+                        t = epoch + 1
+                        self.optimizer.update_params(self.layers, lr, t)
                     else:
                         self.update_params()
-
-                # Check the backpropagation algorithm after learning some parameters
-                if gradient_checking:
-                    # Pick 10 different epochs
-                    if epoch % (math.floor(self.num_epochs / 10)) == 0:
-                        # Check a random sample
-                        # Feeding the whole batch yields high errors
-                        m = X.shape[1]
-                        rand_index = random.randint(0, m - 1)
-                        sample_X = X[:, rand_index].reshape(X.shape[0], 1)
-                        sample_Y = Y[:, rand_index].reshape(Y.shape[0], 1)
-                        relative_error = self.gradient_checking(sample_X, sample_Y)
-                        if relative_error <= 1e-6:
-                            status = 'OK'
-                        elif relative_error <= 1e-2:
-                            status = 'WARNING'
-                        else:
-                            status = 'ERROR'
-                        relative_errors.append((epoch, rand_index, status, relative_error))
 
         if gradient_checking:
             return costs, relative_errors
 
         return costs
 
+    ###########
+    # PREDICT #
+    ###########
+
+    def predict(self, X):
+        # Propagate forward with the parameters learned previously
+        output = self.propagate_forward(X, predict=True)
+
+        return output
+
     #####################
     # GRADIENT CHECKING #
     #####################
 
-    def gradient_checking(self, X, Y, epsilon=1e-5):
+    def gradient_checking(self, X, Y, epsilon=1e-5, train=False):
         """
         Gradient Checking algorithm
 
@@ -269,9 +263,10 @@ class DeepNN:
         # http://ufldl.stanford.edu/wiki/index.php/Gradient_checking_and_advanced_optimization
         # Epsilon higher than 1e-5 likely to produce numeric instability
 
-        # Get gradients for the batch (X, Y)
-        output = self.propagate_forward(X, predict=True)
-        self.propagate_backward(output, Y)
+        if train:
+            # Train the model first
+            output = self.propagate_forward(X)
+            self.propagate_backward(output, Y)
 
         # Roll parameters dictionary into a large (n, 1) vector
         param_theta = grad_check.roll_params(self.layers)
@@ -310,16 +305,3 @@ class DeepNN:
         relative_error = grad_check.calculate_diff(grad_theta, grad_approx)
 
         return relative_error
-
-    ###########
-    # PREDICT #
-    ###########
-
-    def predict(self, X):
-        """
-        Predict using forward propagation and a classification threshold
-        """
-        # Propagate forward with the parameters learned previously
-        output = self.propagate_forward(X, predict=True)
-
-        return output
