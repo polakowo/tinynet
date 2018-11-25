@@ -1,5 +1,3 @@
-Currently supported:
-
 - Batch, mini-batch and stochastic GD
 - Gradient Checking
 - Batch normalization
