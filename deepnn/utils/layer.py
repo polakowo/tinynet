@@ -44,16 +44,16 @@ class Layer:
             # Poor initialization can lead to vanishing/exploding gradients
             if self.init == 'xavier':
                 # Random initialization is used to break symmetry
-                self.params['W'] = self.rng.randn(self.n, prev_n) * np.sqrt(1. / prev_n)
+                self.params['W'] = self.rng.randn(prev_n, self.n) * np.sqrt(1. / prev_n)
             elif self.init == 'he':
                 # He initialization works well for networks with ReLU activations
-                self.params['W'] = self.rng.randn(self.n, prev_n) * np.sqrt(2. / prev_n)
+                self.params['W'] = self.rng.randn(prev_n, self.n) * np.sqrt(2. / prev_n)
 
         if 'b' in params:
             self.params['b'] = params['b']
         else:
             # Use zeros initialization for the biases
-            self.params['b'] = np.zeros((self.n, 1))
+            self.params['b'] = np.zeros((1, self.n))
 
         if self.batch_norm is not None:
             # Learn two extra parameters for every dimension to get optimum scaling and
@@ -65,20 +65,20 @@ class Layer:
             else:
                 # There is no symmetry breaking to consider here
                 # GD adapts their values to fit the corresponding feature's distribution
-                self.params['gamma'] = np.ones((self.n, 1))
+                self.params['gamma'] = np.ones((1, self.n))
 
             if 'beta' in params:
                 self.params['beta'] = params['beta']
             else:
-                self.params['beta'] = np.zeros((self.n, 1))
+                self.params['beta'] = np.zeros((1, self.n))
 
     #########################
     # FORWARD: FUN-1 -> FUN #
     #########################
 
     def linear_forward(self, input, W, b):
-        output = W.dot(input) + b
-        assert(output.shape == (W.shape[0], input.shape[1]))
+        output = np.dot(input, W) + b
+        assert(output.shape == (input.shape[0], W.shape[1]))
 
         cache = (input, W, b)
         return output, cache
@@ -140,20 +140,20 @@ class Layer:
         return doutput
 
     def linear_backward(self, dinput, cache):
-        m = dinput.shape[1]
+        m = dinput.shape[0]
         input, W, b = cache
 
-        dW = 1. / m * np.dot(dinput, input.T)
+        dW = 1. / m * np.dot(input.T, dinput)
         assert(dW.shape == W.shape)
 
         if isinstance(self.regularizer, regularizers.L2):
-            # Penalize weights (weaken connections in the computational graph)
+            # Penalize weights (weaken connections in the computation graph)
             dW += self.regularizer.compute_term_derivative(W, m)
 
-        db = 1. / m * np.sum(dinput, axis=1, keepdims=True)
+        db = 1. / m * np.sum(dinput, axis=0, keepdims=True)
         assert(db.shape == b.shape)
 
-        doutput = np.dot(W.T, dinput)
+        doutput = np.dot(dinput, W.T)
         assert(doutput.shape == input.shape)
 
         return doutput, dW, db

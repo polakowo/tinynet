@@ -27,7 +27,7 @@ def softmax(x):
     # Compute the softmax of vector x in a numerically stable way
     shiftx = x - np.max(x)
     e = np.exp(shiftx)
-    return e / np.sum(e, axis=0)
+    return e / np.sum(e, axis=1, keepdims=True)
 
 
 def softmax_delta(x, Y):

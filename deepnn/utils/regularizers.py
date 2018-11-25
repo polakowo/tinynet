@@ -46,7 +46,7 @@ class Dropout:
         self.rng = rng
 
     def forward(self, input):
-        KEEP_MASK = self.rng.rand(input.shape[0], input.shape[1])
+        KEEP_MASK = self.rng.rand(*input.shape)
         # Shut down each neuron of the layer with a probability of 1−keep_prob
         KEEP_MASK = KEEP_MASK < self.keep_prob
         output = input * KEEP_MASK

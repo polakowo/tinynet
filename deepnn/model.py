@@ -57,7 +57,7 @@ class DeepNN:
         Initialize params in each layer
         """
         for index, layer in enumerate(self.layers):
-            prev_n = self.layers[index - 1].n if index > 0 else X.shape[0]
+            prev_n = self.layers[index - 1].n if index > 0 else X.shape[1]
 
             layer.init_params(prev_n)
 
@@ -77,11 +77,11 @@ class DeepNN:
     ########
 
     def cross_entropy(self, output, Y, delta=False):
-        m = output.shape[1]
+        m = output.shape[0]
 
         if not delta:
 
-            if Y.shape[0] == 1:
+            if Y.shape[1] == 1:
                 # multi-label classification
                 with np.errstate(divide='ignore', invalid='ignore'):
                     logprobs = Y * np.log(output) + (1 - Y) * np.log(1 - output)
@@ -95,7 +95,7 @@ class DeepNN:
             return -1. / m * np.sum(logprobs)
 
         else:
-            if Y.shape[0] == 1:
+            if Y.shape[1] == 1:
                 with np.errstate(divide='ignore', invalid='ignore'):
                     doutput = -Y / (output) + (1 - Y) / (1 - output)
             else:
@@ -107,7 +107,7 @@ class DeepNN:
             return doutput
 
     def compute_cost(self, output, Y, epsilon=1e-12):
-        m = output.shape[1]
+        m = output.shape[0]
 
         cost = self.cross_entropy(output, Y)
 
@@ -147,19 +147,19 @@ class DeepNN:
     def generate_mini_batches(self, X, Y, rng=None):
         if rng is None:
             pass
-        m = X.shape[1]
+        m = X.shape[0]
         mini_batches = []
 
         # Step 1: Shuffle (X, Y)
         permutation = list(rng.permutation(m))
-        shuffled_X = X[:, permutation]
-        shuffled_Y = Y[:, permutation].reshape(Y.shape)
+        shuffled_X = X[permutation, :]
+        shuffled_Y = Y[permutation, :].reshape(Y.shape)
 
         # Step 2: Partition (shuffled_X, shuffled_Y)
         num_mini_batches = math.floor(m / self.mini_batch_size)
         for i in range(num_mini_batches + 1):
-            mini_batch_X = shuffled_X[:, i * self.mini_batch_size: (i + 1) * self.mini_batch_size]
-            mini_batch_Y = shuffled_Y[:, i * self.mini_batch_size: (i + 1) * self.mini_batch_size]
+            mini_batch_X = shuffled_X[i * self.mini_batch_size: (i + 1) * self.mini_batch_size, :]
+            mini_batch_Y = shuffled_Y[i * self.mini_batch_size: (i + 1) * self.mini_batch_size, :]
 
             mini_batch = (mini_batch_X, mini_batch_Y)
             mini_batches.append(mini_batch)
@@ -170,7 +170,7 @@ class DeepNN:
         """
         Train an L-layer neural network
 
-        X and Y must be of shape (features/classes, samples)
+        X and Y must be of shape (samples, features/classes)
         """
 
         # Initialize parameters dictionary
@@ -274,7 +274,7 @@ class DeepNN:
         the numerical approximation of the gradient (computed using forward propagation)
         """
         # http://ufldl.stanford.edu/wiki/index.php/Gradient_checking_and_advanced_optimization
-        # Epsilon higher than 1e-5 likely to produce numeric instability
+        # Important: Epsilon higher than 1e-5 likely to produce numeric instability
 
         for layer in self.layers:
             assert(not isinstance(layer.regularizer, regularizers.Dropout))
@@ -290,8 +290,8 @@ class DeepNN:
         grad_theta = grad_check.roll_params(self.layers, grads=True)
 
         # Initialize vectors of the same shape
-        num_params = param_theta.shape[0]
-        grad_approx = np.zeros((num_params, 1))
+        num_params = len(param_theta)
+        grad_approx = np.zeros(num_params)
 
         # Repeat for each number (parameter) in the vector
         for i in range(num_params):

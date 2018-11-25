@@ -3,7 +3,7 @@ import numpy as np
 
 def roll_params(layers, grads=False):
     # Roll the parameters from layers into a single (n, 1) vector
-    theta = np.zeros((0, 1))
+    theta = np.empty(0)
 
     for layer in layers:
         if grads:
@@ -13,9 +13,9 @@ def roll_params(layers, grads=False):
         for k in vdict:
             vector = vdict[k]
             # Flatten the vector
-            vector = np.reshape(vector, (-1, 1))
+            vector = vector.flatten()
             # Append the vector
-            theta = np.concatenate((theta, vector), axis=0)
+            theta = np.concatenate((theta, vector))
 
     return theta
 
