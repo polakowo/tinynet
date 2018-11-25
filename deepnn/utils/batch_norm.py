@@ -24,8 +24,8 @@ class BatchNorm:
     def forward(self, input, gamma, beta):
         n, m = input.shape
 
-        mu = np.mean(input, axis=1).reshape((n, 1))
-        var = np.var(input, axis=1).reshape((n, 1))
+        mu = np.mean(input, axis=1, keepdims=True)
+        var = np.var(input, axis=1, keepdims=True)
 
         # Normalize activation output within a mini-batch
         input_norm = (input - mu) / np.sqrt(var + self.eps)
@@ -62,18 +62,18 @@ class BatchNorm:
         std_inv = 1 / np.sqrt(var + self.eps)
 
         dinput_norm = dinput * gamma
-        dvar = -0.5 * np.sum(dinput_norm * input_mu, axis=1).reshape((n, 1)) * std_inv ** 3
-        dmu = np.sum(-dinput_norm * std_inv, axis=1).reshape((n, 1)) + \
-            dvar * np.mean(-2. * input_mu, axis=1).reshape((n, 1))
+        dvar = -0.5 * np.sum(dinput_norm * input_mu, axis=1, keepdims=True) * std_inv ** 3
+        dmu = np.sum(-dinput_norm * std_inv, axis=1, keepdims=True) + \
+            dvar * np.mean(-2. * input_mu, axis=1, keepdims=True)
 
         # Gradients
         doutput = (dinput_norm * std_inv) + (2 * dvar * input_mu / m) + (dmu / m)
         assert(doutput.shape == dinput.shape)
 
-        dgamma = np.sum(dinput * input_norm, axis=1).reshape((n, 1))
+        dgamma = np.sum(dinput * input_norm, axis=1, keepdims=True)
         assert(dgamma.shape == gamma.shape)
 
-        dbeta = np.sum(dinput, axis=1).reshape((n, 1))
+        dbeta = np.sum(dinput, axis=1, keepdims=True)
         assert(dbeta.shape == beta.shape)
 
         return doutput, dgamma, dbeta

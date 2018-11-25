@@ -76,23 +76,44 @@ class DeepNN:
     # COST #
     ########
 
-    def compute_cost(self, output, Y):
-        m = Y.shape[1]
+    def cross_entropy(self, output, Y, delta=False):
+        m = output.shape[1]
 
-        # Cross-entropy
-        with np.errstate(divide='ignore', invalid='ignore'):
-            # Handle inf in np.log
-            logprobs = np.multiply(-np.log(output), Y) + np.multiply(-np.log(1 - output), 1 - Y)
+        if not delta:
+
+            if Y.shape[0] == 1:
+                # multi-label classification
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    logprobs = Y * np.log(output) + (1 - Y) * np.log(1 - output)
+            else:
+                # multi-class classification
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    logprobs = Y * np.log(output)
+
             logprobs[logprobs == np.inf] = 0
             logprobs = np.nan_to_num(logprobs)
-        cost = 1. / m * np.nansum(logprobs)
+            return -1. / m * np.sum(logprobs)
+
+        else:
+            if Y.shape[0] == 1:
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    doutput = -Y / (output) + (1 - Y) / (1 - output)
+            else:
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    doutput = -Y / output
+
+            doutput[doutput == np.inf] = 0
+            doutput = np.nan_to_num(doutput)
+            return doutput
+
+    def compute_cost(self, output, Y, epsilon=1e-12):
+        m = output.shape[1]
+
+        cost = self.cross_entropy(output, Y)
 
         if isinstance(self.regularizer, regularizers.L2):
             # Add L2 regularization term to the cost
             cost += self.regularizer.compute_term(self.layers, m)
-
-        cost = np.squeeze(cost)
-        assert(cost.shape == ())
 
         return cost
 
@@ -101,18 +122,12 @@ class DeepNN:
     ########################
 
     def propagate_backward(self, output, Y):
-        Y = Y.reshape(output.shape)
-
-        with np.errstate(divide='ignore', invalid='ignore'):
-            # Handle division by zero in np.divide
-            doutput = -(np.divide(Y, output) - np.divide(1 - Y, 1 - output))
-            doutput[doutput == np.inf] = 0
-            doutput = np.nan_to_num(doutput)
+        doutput = self.cross_entropy(output, Y, delta=True)
 
         # For each layer, calculate the gradients of the parameters
         # Move from the last layer to the first
         for layer in reversed(self.layers):
-            doutput = layer.propagate_backward(doutput)
+            doutput = layer.propagate_backward(doutput, Y)
             # Gradients are now stored in the layer instance
 
     #################
@@ -138,7 +153,7 @@ class DeepNN:
         # Step 1: Shuffle (X, Y)
         permutation = list(rng.permutation(m))
         shuffled_X = X[:, permutation]
-        shuffled_Y = Y[:, permutation].reshape((1, m))
+        shuffled_Y = Y[:, permutation].reshape(Y.shape)
 
         # Step 2: Partition (shuffled_X, shuffled_Y)
         num_mini_batches = math.floor(m / self.mini_batch_size)
@@ -155,9 +170,7 @@ class DeepNN:
         """
         Train an L-layer neural network
 
-        X must be of shape (n, m)
-        Y must be of shape (1, m)
-        where n is the number of features and m is the number of datasets
+        X and Y must be of shape (features/classes, samples)
         """
 
         # Initialize parameters dictionary
@@ -253,7 +266,7 @@ class DeepNN:
     # GRADIENT CHECKING #
     #####################
 
-    def gradient_checking(self, X, Y, epsilon=1e-5, train=False):
+    def gradient_checking(self, X, Y, eps=1e-5, train=False):
         """
         Gradient Checking algorithm
 
@@ -262,6 +275,10 @@ class DeepNN:
         """
         # http://ufldl.stanford.edu/wiki/index.php/Gradient_checking_and_advanced_optimization
         # Epsilon higher than 1e-5 likely to produce numeric instability
+
+        for layer in self.layers:
+            assert(not isinstance(layer.regularizer, regularizers.Dropout))
+            assert(layer.batch_norm is None)
 
         if train:
             # Train the model first
@@ -281,7 +298,7 @@ class DeepNN:
             # Use two-sided Taylor approximation which is 2x more precise than one-sided
             # Add epsilon to the parameter
             theta_plus = np.copy(param_theta)
-            theta_plus[i] = theta_plus[i] + epsilon
+            theta_plus[i] = theta_plus[i] + eps
             # Calculate new cost
             grad_check.unroll_params(theta_plus, self.layers)
             output_plus = self.propagate_forward(X, predict=True)
@@ -289,14 +306,14 @@ class DeepNN:
 
             # Subtract epsilon from the parameter
             theta_minus = np.copy(param_theta)
-            theta_minus[i] = theta_minus[i] - epsilon
+            theta_minus[i] = theta_minus[i] - eps
             # Calculate new cost
             grad_check.unroll_params(theta_minus, self.layers)
             output_minus = self.propagate_forward(X, predict=True)
             cost_minus = self.compute_cost(output_minus, Y)
 
             # Approximate the partial derivative, error is eps^2
-            grad_approx[i] = (cost_plus - cost_minus) / (2 * epsilon)
+            grad_approx[i] = (cost_plus - cost_minus) / (2 * eps)
 
         # Reset model params
         grad_check.unroll_params(param_theta, self.layers)

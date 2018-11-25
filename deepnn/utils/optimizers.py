@@ -57,12 +57,12 @@ class Adam:
     It's one of the most effective optimization algorithms
     """
 
-    def __init__(self, beta1=0.9, beta2=0.999, epsilon=1e-8):
+    def __init__(self, beta1=0.9, beta2=0.999, eps=1e-8):
         # pPrameters beta1 and beta2 control the decay rates of these moving averages
         self.beta1 = beta1
         self.beta2 = beta2
         # Epsilon is required to prevent division by zero
-        self.epsilon = epsilon
+        self.eps = eps
 
     def init_params(self, layers):
         # Initialize 1st moment vector
@@ -101,4 +101,4 @@ class Adam:
                 s_corrected = s['d' + k] / (1 - self.beta2 ** t)
 
                 # Update parameters
-                layer.params[k] = layer.params[k] - lr * v_corrected / (np.sqrt(s_corrected) + self.epsilon)
+                layer.params[k] = layer.params[k] - lr * v_corrected / (np.sqrt(s_corrected) + self.eps)

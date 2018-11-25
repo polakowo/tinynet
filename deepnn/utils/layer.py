@@ -17,17 +17,8 @@ class Layer:
         assert(n is not None)
         self.n = n
 
-        # Activation function
-        # Must be a non-linear function
+        # (non-linear) activation function
         self.activation = activation
-        if activation == activations.tanh:
-            self.dactivation = activations.dtanh
-        elif activation == activations.sigmoid:
-            self.dactivation = activations.dsigmoid
-        elif activation == activations.ReLU:
-            self.dactivation = activations.dReLU
-        else:
-            raise ValueError()
 
         # Initialization method
         self.init = init
@@ -124,11 +115,12 @@ class Layer:
         if not predict:
             self.cache['activation'] = cache
 
-        if not predict and isinstance(self.regularizer, regularizers.Dropout):
-            # Randomly shut down some neurons for each sample in input
-            # Cache is stored in the Dropout class
-            output, cache = self.regularizer.forward(output)
-            self.cache['dropout'] = cache
+        if not predict:
+            if isinstance(self.regularizer, regularizers.Dropout):
+                # Randomly shut down some neurons for each sample in input
+                # Cache is stored in the Dropout class
+                output, cache = self.regularizer.forward(output)
+                self.cache['dropout'] = cache
 
         return output
 
@@ -136,10 +128,13 @@ class Layer:
     # BACKWARD FUN-1 <- FUN #
     #########################
 
-    def activation_backward(self, dinput, cache):
+    def activation_backward(self, dinput, Y, cache):
         input = cache
 
-        doutput = dinput * self.dactivation(input)
+        if self.activation == activations.softmax:
+            doutput = activations.softmax_delta(input, Y)
+        else:
+            doutput = dinput * self.activation(input, delta=True)
         assert(doutput.shape == input.shape)
 
         return doutput
@@ -163,7 +158,7 @@ class Layer:
 
         return doutput, dW, db
 
-    def propagate_backward(self, dinput):
+    def propagate_backward(self, dinput, Y):
         doutput = dinput
 
         if isinstance(self.regularizer, regularizers.Dropout):
@@ -172,7 +167,7 @@ class Layer:
             doutput = self.regularizer.backward(doutput, cache)
 
         cache = self.cache['activation']
-        doutput = self.activation_backward(doutput, cache)
+        doutput = self.activation_backward(doutput, Y, cache)
 
         if self.batch_norm is not None:
             cache = self.cache['batch_norm']
