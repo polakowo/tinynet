@@ -11,15 +11,14 @@ from deepnn.utils import grad_check
 class DeepNN:
 
     def __init__(self,
-                 layers=None,
-                 lr=None,
-                 num_epochs=None,
+                 layers,
+                 learning_rate,
+                 num_epochs,
                  mini_batch_size=None,
                  optimizer=None,
                  regularizer=None):
 
         # A list of layer instances
-        assert(layers is not None)
         self.layers = layers
         for index, layer in enumerate(layers):
             layer.index = index
@@ -27,11 +26,9 @@ class DeepNN:
         # Learning rate
         # A key differentiator between convergence and divergence
         # Can be a function of epoch
-        assert(lr is not None)
-        self.lr = lr
+        self.learning_rate = learning_rate
 
         # Number of iterations of gradient descent
-        assert(num_epochs is not None)
         self.num_epochs = num_epochs
 
         # Mini-batch gradient descent
@@ -138,7 +135,7 @@ class DeepNN:
         for layer in self.layers:
             for key in layer.params:
                 # Update the rule for each parameter in each layer
-                layer.params[key] = layer.params[key] - self.lr * layer.grads['d' + key]
+                layer.params[key] = layer.params[key] - self.learning_rate * layer.grads['d' + key]
 
     #########
     # TRAIN #
@@ -217,10 +214,10 @@ class DeepNN:
                     self.propagate_backward(output, mini_Y)
 
                     # Update parameters
-                    if callable(self.lr):
-                        lr = self.lr(epoch)
+                    if callable(self.learning_rate):
+                        learning_rate = self.learning_rate(epoch)
                     else:
-                        lr = self.lr
+                        learning_rate = self.learning_rate
 
                     # Check the backpropagation algorithm after learning some parameters
                     # Only one mini batch every epoch
@@ -240,10 +237,10 @@ class DeepNN:
                     # Delegate the task to the optimizer if set
                     if isinstance(self.optimizer, optimizers.Momentum):
                         t = epoch + 1
-                        self.optimizer.update_params(self.layers, lr, t)
+                        self.optimizer.update_params(self.layers, learning_rate, t)
                     elif isinstance(self.optimizer, optimizers.Adam):
                         t = epoch + 1
-                        self.optimizer.update_params(self.layers, lr, t)
+                        self.optimizer.update_params(self.layers, learning_rate, t)
                     else:
                         self.update_params()
 

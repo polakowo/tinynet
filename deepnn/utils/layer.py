@@ -5,6 +5,7 @@ from deepnn.utils import regularizers
 
 
 class Layer:
+
     def __init__(self,
                  n_nodes,
                  activation=activations.tanh,
@@ -25,7 +26,7 @@ class Layer:
         # Layer-level regularization algorithm
         self.regularizer = regularizer
 
-        # Batch normalizer
+        # Batch normalization
         self.batch_norm = batch_norm
 
         if rng is None:

@@ -29,7 +29,7 @@ class Momentum:
 
             self.layer_v.append(v)
 
-    def update_params(self, layers, lr, t):
+    def update_params(self, layers, learning_rate, t):
         # Momentum update for each parameter in a layer
         for l, layer in enumerate(layers):
             v = self.layer_v[l]
@@ -44,7 +44,7 @@ class Momentum:
                 v_corrected = v['d' + k] / (1 - self.beta ** t)
 
                 # Update parameters
-                layer.params[k] = layer.params[k] - lr * v_corrected
+                layer.params[k] = layer.params[k] - learning_rate * v_corrected
 
 
 class Adam:
@@ -81,7 +81,7 @@ class Adam:
             self.layer_v.append(v)
             self.layer_s.append(s)
 
-    def update_params(self, layers, lr, t):
+    def update_params(self, layers, learning_rate, t):
         # Perform Adam update on all parameters in a layer
         for l, layer in enumerate(layers):
             v = self.layer_v[l]
@@ -101,4 +101,4 @@ class Adam:
                 s_corrected = s['d' + k] / (1 - self.beta2 ** t)
 
                 # Update parameters
-                layer.params[k] = layer.params[k] - lr * v_corrected / (np.sqrt(s_corrected) + self.eps)
+                layer.params[k] = layer.params[k] - learning_rate * v_corrected / (np.sqrt(s_corrected) + self.eps)
