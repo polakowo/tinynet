@@ -57,7 +57,7 @@ class DeepNN:
         Initialize params in each layer
         """
         for index, layer in enumerate(self.layers):
-            prev_n = self.layers[index - 1].n if index > 0 else X.shape[1]
+            prev_n = self.layers[index - 1].n_nodes if index > 0 else X.shape[1]
 
             layer.init_params(prev_n)
 
@@ -77,7 +77,7 @@ class DeepNN:
     ########
 
     def cross_entropy(self, output, Y, delta=False):
-        m = output.shape[0]
+        n_samples = output.shape[0]
 
         if not delta:
 
@@ -92,7 +92,7 @@ class DeepNN:
 
             logprobs[logprobs == np.inf] = 0
             logprobs = np.nan_to_num(logprobs)
-            return -1. / m * np.sum(logprobs)
+            return -1. / n_samples * np.sum(logprobs)
 
         else:
             if Y.shape[1] == 1:
@@ -107,13 +107,13 @@ class DeepNN:
             return doutput
 
     def compute_cost(self, output, Y, epsilon=1e-12):
-        m = output.shape[0]
+        n_samples = output.shape[0]
 
         cost = self.cross_entropy(output, Y)
 
         if isinstance(self.regularizer, regularizers.L2):
             # Add L2 regularization term to the cost
-            cost += self.regularizer.compute_term(self.layers, m)
+            cost += self.regularizer.compute_term(self.layers, n_samples)
 
         return cost
 
@@ -147,16 +147,16 @@ class DeepNN:
     def generate_mini_batches(self, X, Y, rng=None):
         if rng is None:
             pass
-        m = X.shape[0]
+        n_samples = X.shape[0]
         mini_batches = []
 
         # Step 1: Shuffle (X, Y)
-        permutation = list(rng.permutation(m))
+        permutation = list(rng.permutation(n_samples))
         shuffled_X = X[permutation, :]
         shuffled_Y = Y[permutation, :].reshape(Y.shape)
 
         # Step 2: Partition (shuffled_X, shuffled_Y)
-        num_mini_batches = math.floor(m / self.mini_batch_size)
+        num_mini_batches = math.floor(n_samples / self.mini_batch_size)
         for i in range(num_mini_batches + 1):
             mini_batch_X = shuffled_X[i * self.mini_batch_size: (i + 1) * self.mini_batch_size, :]
             mini_batch_Y = shuffled_Y[i * self.mini_batch_size: (i + 1) * self.mini_batch_size, :]
@@ -285,7 +285,7 @@ class DeepNN:
             output = self.propagate_forward(X)
             self.propagate_backward(output, Y)
 
-        # Roll parameters dictionary into a large (n, 1) vector
+        # Extract layer params into a 1-dim vector
         param_theta = grad_check.roll_params(self.layers)
         grad_theta = grad_check.roll_params(self.layers, grads=True)
 

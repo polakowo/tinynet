@@ -12,9 +12,8 @@ def roll_params(layers, grads=False):
             vdict = layer.params
         for k in vdict:
             vector = vdict[k]
-            # Flatten the vector
+            # Flatten and append the vector
             vector = vector.flatten()
-            # Append the vector
             theta = np.concatenate((theta, vector))
 
     return theta

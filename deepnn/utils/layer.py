@@ -6,7 +6,7 @@ from deepnn.utils import regularizers
 
 class Layer:
     def __init__(self,
-                 n=None,
+                 n_nodes,
                  activation=activations.tanh,
                  init='xavier',
                  regularizer=None,
@@ -14,8 +14,7 @@ class Layer:
                  rng=None):
 
         # The number of units in the layer
-        assert(n is not None)
-        self.n = n
+        self.n_nodes = n_nodes
 
         # (non-linear) activation function
         self.activation = activation
@@ -44,16 +43,16 @@ class Layer:
             # Poor initialization can lead to vanishing/exploding gradients
             if self.init == 'xavier':
                 # Random initialization is used to break symmetry
-                self.params['W'] = self.rng.randn(prev_n, self.n) * np.sqrt(1. / prev_n)
+                self.params['W'] = self.rng.randn(prev_n, self.n_nodes) * np.sqrt(1. / prev_n)
             elif self.init == 'he':
                 # He initialization works well for networks with ReLU activations
-                self.params['W'] = self.rng.randn(prev_n, self.n) * np.sqrt(2. / prev_n)
+                self.params['W'] = self.rng.randn(prev_n, self.n_nodes) * np.sqrt(2. / prev_n)
 
         if 'b' in params:
             self.params['b'] = params['b']
         else:
             # Use zeros initialization for the biases
-            self.params['b'] = np.zeros((1, self.n))
+            self.params['b'] = np.zeros((1, self.n_nodes))
 
         if self.batch_norm is not None:
             # Learn two extra parameters for every dimension to get optimum scaling and
@@ -65,12 +64,12 @@ class Layer:
             else:
                 # There is no symmetry breaking to consider here
                 # GD adapts their values to fit the corresponding feature's distribution
-                self.params['gamma'] = np.ones((1, self.n))
+                self.params['gamma'] = np.ones((1, self.n_nodes))
 
             if 'beta' in params:
                 self.params['beta'] = params['beta']
             else:
-                self.params['beta'] = np.zeros((1, self.n))
+                self.params['beta'] = np.zeros((1, self.n_nodes))
 
     #########################
     # FORWARD: FUN-1 -> FUN #
@@ -140,17 +139,17 @@ class Layer:
         return doutput
 
     def linear_backward(self, dinput, cache):
-        m = dinput.shape[0]
+        n_samples = dinput.shape[0]
         input, W, b = cache
 
-        dW = 1. / m * np.dot(input.T, dinput)
+        dW = 1. / n_samples * np.dot(input.T, dinput)
         assert(dW.shape == W.shape)
 
         if isinstance(self.regularizer, regularizers.L2):
             # Penalize weights (weaken connections in the computation graph)
-            dW += self.regularizer.compute_term_derivative(W, m)
+            dW += self.regularizer.compute_term_derivative(W, n_samples)
 
-        db = 1. / m * np.sum(dinput, axis=0, keepdims=True)
+        db = 1. / n_samples * np.sum(dinput, axis=0, keepdims=True)
         assert(db.shape == b.shape)
 
         doutput = np.dot(dinput, W.T)

@@ -19,12 +19,12 @@ class L2:
         # Encourages the mean of the weights toward 0, with a normal (bell-shaped or Gaussian) distribution
         self._lambda = _lambda
 
-    def compute_term(self, layers, m):
+    def compute_term(self, layers, n_samples):
         L2 = np.sum([np.sum(np.square(layer.params['W'])) for layer in layers])
-        return 1 / 2 * self._lambda / m * L2
+        return 1 / 2 * self._lambda / n_samples * L2
 
-    def compute_term_derivative(self, W, m):
-        return self._lambda / m * W
+    def compute_term_derivative(self, W, n_samples):
+        return self._lambda / n_samples * W
 
 
 class Dropout:
