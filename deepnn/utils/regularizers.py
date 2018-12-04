@@ -15,7 +15,6 @@ class L2:
     """
 
     def __init__(self, _lambda):
-        # Encourages weight values toward 0
         # Encourages the mean of the weights toward 0, with a normal (bell-shaped or Gaussian) distribution
         self._lambda = _lambda
 

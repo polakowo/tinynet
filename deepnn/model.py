@@ -79,11 +79,11 @@ class DeepNN:
         if not delta:
 
             if Y.shape[1] == 1:
-                # multi-label classification
+                # binary classification
                 with np.errstate(divide='ignore', invalid='ignore'):
                     logprobs = Y * np.log(output) + (1 - Y) * np.log(1 - output)
             else:
-                # multi-class classification
+                # multiclass classification
                 with np.errstate(divide='ignore', invalid='ignore'):
                     logprobs = Y * np.log(output)
 

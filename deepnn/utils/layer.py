@@ -7,7 +7,7 @@ from deepnn.utils import regularizers
 class Layer:
 
     def __init__(self,
-                 n_nodes,
+                 n,
                  activation=activations.tanh,
                  init='xavier',
                  regularizer=None,
@@ -15,7 +15,7 @@ class Layer:
                  rng=None):
 
         # The number of units in the layer
-        self.n_nodes = n_nodes
+        self.n = n
 
         # (non-linear) activation function
         self.activation = activation
@@ -42,18 +42,19 @@ class Layer:
             self.params['W'] = params['W']
         else:
             # Poor initialization can lead to vanishing/exploding gradients
+            # Random initialization is used to break symmetry
             if self.init == 'xavier':
-                # Random initialization is used to break symmetry
-                self.params['W'] = self.rng.randn(prev_n, self.n_nodes) * np.sqrt(1. / prev_n)
+                # Works well for networks with tanh activations
+                self.params['W'] = self.rng.randn(prev_n, self.n) * np.sqrt(2. / (prev_n + self.n))
             elif self.init == 'he':
-                # He initialization works well for networks with ReLU activations
-                self.params['W'] = self.rng.randn(prev_n, self.n_nodes) * np.sqrt(2. / prev_n)
+                # Works well for networks with ReLU activations
+                self.params['W'] = self.rng.randn(prev_n, self.n) * np.sqrt(2. / prev_n)
 
         if 'b' in params:
             self.params['b'] = params['b']
         else:
             # Use zeros initialization for the biases
-            self.params['b'] = np.zeros((1, self.n_nodes))
+            self.params['b'] = np.zeros((1, self.n))
 
         if self.batch_norm is not None:
             # Learn two extra parameters for every dimension to get optimum scaling and
@@ -65,12 +66,12 @@ class Layer:
             else:
                 # There is no symmetry breaking to consider here
                 # GD adapts their values to fit the corresponding feature's distribution
-                self.params['gamma'] = np.ones((1, self.n_nodes))
+                self.params['gamma'] = np.ones((1, self.n))
 
             if 'beta' in params:
                 self.params['beta'] = params['beta']
             else:
-                self.params['beta'] = np.zeros((1, self.n_nodes))
+                self.params['beta'] = np.zeros((1, self.n))
 
     #########################
     # FORWARD: FUN-1 -> FUN #
