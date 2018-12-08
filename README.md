@@ -16,8 +16,8 @@ Features supported:
 
 Example on sklearn dataset:
 
-https://nbviewer.jupyter.org/github/polakowo/numpy-dnn/blob/master/circle.ipynb
+https://nbviewer.jupyter.org/github/polakowo/numpy-dnn/blob/master/examples/circles.ipynb
 
 Example on MNIST dataset:
 
-https://nbviewer.jupyter.org/github/polakowo/numpy-dnn/blob/master/mnist.ipynb
+https://nbviewer.jupyter.org/github/polakowo/numpy-dnn/blob/master/examples/mnist.ipynb
