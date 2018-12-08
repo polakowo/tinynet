@@ -18,17 +18,23 @@ class Dense:
 
         # The number of units in the layer
         self.units = units
+
         # (non-linear) activation function
         self.activation_fn = activation_fn
+
         # Initializer for weights
         self.weight_initializer = weight_initializer
+
         # Initializer for biases
         self.bias_initializer = bias_initializer
+
         # Layer-level regularization algorithm
         self.regularizer = regularizer
+
         # Batch normalization
         self.batch_norm = batch_norm
 
+        # Random state
         if rng is None:
             rng = np.random.RandomState(0)
         self.rng = rng

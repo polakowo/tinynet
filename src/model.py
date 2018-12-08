@@ -23,16 +23,21 @@ class DNN:
         self.layers = layers
         for index, layer in enumerate(layers):
             layer.index = index
+
         # Optimizations algorithm
         self.optimizer = optimizer
+
         # Number of iterations of gradient descent
         self.num_epochs = num_epochs
+
         # Mini-batch gradient descent
         # Powers of two are often chosen to be the mini-batch size, e.g., 64, 128
         # Make sure that a single mini-batch fits into the CPU/GPU memory
         self.mini_batch_size = mini_batch_size
+
         # Cost function
         self.cost_fn = cost_fn
+
         # Network-level regularization algorithm
         self.regularizer = regularizer
 
