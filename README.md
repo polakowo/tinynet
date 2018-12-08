@@ -14,6 +14,8 @@ Features supported:
   - sigmoid
   - softmax
 
+Notebooks:
+
 [Example with sklearn dataset](https://nbviewer.jupyter.org/github/polakowo/numpy-dnn/blob/master/examples/sklearn.ipynb)
 
 ![](examples/images/sklearn.png)
