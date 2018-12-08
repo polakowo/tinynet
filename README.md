@@ -1,4 +1,4 @@
-Currently supported:
+Features supported:
 - Batch, mini-batch and stochastic GD
 - Gradient Checking
 - Batch normalization
@@ -15,4 +15,5 @@ Currently supported:
   - softmax
 
 Example of use: 
-- https://nbviewer.jupyter.org/github/polakowo/numpy-dnn/blob/master/Notebook.ipynb
+
+https://nbviewer.jupyter.org/github/polakowo/numpy-dnn/blob/master/Notebook.ipynb
