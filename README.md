@@ -14,10 +14,6 @@ Features supported:
   - sigmoid
   - softmax
 
-Example on sklearn dataset:
+[Example on sklearn dataset](https://nbviewer.jupyter.org/github/polakowo/numpy-dnn/blob/master/examples/circles.ipynb)
 
-https://nbviewer.jupyter.org/github/polakowo/numpy-dnn/blob/master/examples/circles.ipynb
-
-Example on MNIST dataset:
-
-https://nbviewer.jupyter.org/github/polakowo/numpy-dnn/blob/master/examples/mnist.ipynb
+[Example on MNIST dataset](https://nbviewer.jupyter.org/github/polakowo/numpy-dnn/blob/master/examples/mnist.ipynb)
