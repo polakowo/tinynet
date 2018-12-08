@@ -3,12 +3,12 @@ import math
 
 from tqdm.auto import trange
 
-from deepnn.utils import regularizers
-from deepnn.utils import optimizers
-from deepnn.utils import grad_check
+from src.utils import regularizers
+from src.utils import optimizers
+from src.utils import grad_check
 
 
-class DeepNN:
+class DNN:
 
     def __init__(self,
                  layers,
@@ -54,7 +54,7 @@ class DeepNN:
         Initialize params in each layer
         """
         for index, layer in enumerate(self.layers):
-            prev_n = self.layers[index - 1].n_nodes if index > 0 else X.shape[1]
+            prev_n = self.layers[index - 1].units if index > 0 else X.shape[1]
 
             layer.init_params(prev_n)
 
@@ -155,11 +155,15 @@ class DeepNN:
         # Step 2: Partition (shuffled_X, shuffled_Y)
         num_mini_batches = math.floor(n_samples / self.mini_batch_size)
         for i in range(num_mini_batches + 1):
-            mini_batch_X = shuffled_X[i * self.mini_batch_size: (i + 1) * self.mini_batch_size, :]
-            mini_batch_Y = shuffled_Y[i * self.mini_batch_size: (i + 1) * self.mini_batch_size, :]
+            from_num = i * self.mini_batch_size
+            to_num = (i + 1) * self.mini_batch_size
 
-            mini_batch = (mini_batch_X, mini_batch_Y)
-            mini_batches.append(mini_batch)
+            if from_num < n_samples:
+                mini_batch_X = shuffled_X[from_num:to_num, :]
+                mini_batch_Y = shuffled_Y[from_num:to_num, :]
+
+                mini_batch = (mini_batch_X, mini_batch_Y)
+                mini_batches.append(mini_batch)
 
         return mini_batches
 

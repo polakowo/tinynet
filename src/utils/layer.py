@@ -1,13 +1,13 @@
 import numpy as np
 
-from deepnn.utils import activations
-from deepnn.utils import regularizers
+from src.utils import activations
+from src.utils import regularizers
 
 
 class Layer:
 
     def __init__(self,
-                 n,
+                 units,
                  activation=activations.tanh,
                  init='xavier',
                  regularizer=None,
@@ -15,7 +15,7 @@ class Layer:
                  rng=None):
 
         # The number of units in the layer
-        self.n = n
+        self.units = units
 
         # (non-linear) activation function
         self.activation = activation
@@ -33,7 +33,7 @@ class Layer:
             rng = np.random.RandomState(0)
         self.rng = rng
 
-    def init_params(self, prev_n, **params):
+    def init_params(self, prev_units, **params):
         self.params = {}
         self.cache = {}
         self.grads = {}
@@ -45,16 +45,16 @@ class Layer:
             # Random initialization is used to break symmetry
             if self.init == 'xavier':
                 # Works well for networks with tanh activations
-                self.params['W'] = self.rng.randn(prev_n, self.n) * np.sqrt(2. / (prev_n + self.n))
+                self.params['W'] = self.rng.randn(prev_units, self.units) * np.sqrt(2. / (prev_units + self.units))
             elif self.init == 'he':
                 # Works well for networks with ReLU activations
-                self.params['W'] = self.rng.randn(prev_n, self.n) * np.sqrt(2. / prev_n)
+                self.params['W'] = self.rng.randn(prev_units, self.units) * np.sqrt(2. / prev_units)
 
         if 'b' in params:
             self.params['b'] = params['b']
         else:
             # Use zeros initialization for the biases
-            self.params['b'] = np.zeros((1, self.n))
+            self.params['b'] = np.zeros((1, self.units))
 
         if self.batch_norm is not None:
             # Learn two extra parameters for every dimension to get optimum scaling and
@@ -66,12 +66,12 @@ class Layer:
             else:
                 # There is no symmetry breaking to consider here
                 # GD adapts their values to fit the corresponding feature's distribution
-                self.params['gamma'] = np.ones((1, self.n))
+                self.params['gamma'] = np.ones((1, self.units))
 
             if 'beta' in params:
                 self.params['beta'] = params['beta']
             else:
-                self.params['beta'] = np.zeros((1, self.n))
+                self.params['beta'] = np.zeros((1, self.units))
 
     #########################
     # FORWARD: FUN-1 -> FUN #
