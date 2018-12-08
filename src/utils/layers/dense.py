@@ -1,31 +1,31 @@
 import numpy as np
 
-from src.utils import activations
+from src.utils import activation_fns
 from src.utils import regularizers
+from src.utils import initializers
 
 
-class Layer:
+class Dense:
 
     def __init__(self,
                  units,
-                 activation=activations.tanh,
-                 init='xavier',
+                 activation_fn=activation_fns.tanh,
+                 weight_initializer=None,
+                 bias_initializer=None,
                  regularizer=None,
                  batch_norm=None,
                  rng=None):
 
         # The number of units in the layer
         self.units = units
-
         # (non-linear) activation function
-        self.activation = activation
-
-        # Initialization method
-        self.init = init
-
+        self.activation_fn = activation_fn
+        # Initializer for weights
+        self.weight_initializer = weight_initializer
+        # Initializer for biases
+        self.bias_initializer = bias_initializer
         # Layer-level regularization algorithm
         self.regularizer = regularizer
-
         # Batch normalization
         self.batch_norm = batch_norm
 
@@ -33,45 +33,33 @@ class Layer:
             rng = np.random.RandomState(0)
         self.rng = rng
 
-    def init_params(self, prev_units, **params):
+    def init_params(self, prev_units):
         self.params = {}
         self.cache = {}
         self.grads = {}
 
-        if 'W' in params:
-            self.params['W'] = params['W']
+        # Poor initialization can lead to vanishing/exploding gradients
+        # Random initialization is preferred to break symmetry
+        if self.weight_initializer is None:
+            weight_initializer = initializers.Xavier(rng=self.rng)
+            self.params['W'] = weight_initializer.init_param(prev_units, self.units)
         else:
-            # Poor initialization can lead to vanishing/exploding gradients
-            # Random initialization is used to break symmetry
-            if self.init == 'xavier':
-                # Works well for networks with tanh activations
-                self.params['W'] = self.rng.randn(prev_units, self.units) * np.sqrt(2. / (prev_units + self.units))
-            elif self.init == 'he':
-                # Works well for networks with ReLU activations
-                self.params['W'] = self.rng.randn(prev_units, self.units) * np.sqrt(2. / prev_units)
+            self.params['W'] = self.weight_initializer.init_param(prev_units, self.units)
 
-        if 'b' in params:
-            self.params['b'] = params['b']
-        else:
-            # Use zeros initialization for the biases
+        if self.bias_initializer is None:
             self.params['b'] = np.zeros((1, self.units))
+        else:
+            self.params['b'] = self.bias_initializer.init_param(1, self.units)
 
         if self.batch_norm is not None:
             # Learn two extra parameters for every dimension to get optimum scaling and
             # shifting of activation outputs over zero means and unit variances towards
             # elimination of internal covariate shift.
 
-            if 'gamma' in params:
-                self.params['gamma'] = params['gamma']
-            else:
-                # There is no symmetry breaking to consider here
-                # GD adapts their values to fit the corresponding feature's distribution
-                self.params['gamma'] = np.ones((1, self.units))
-
-            if 'beta' in params:
-                self.params['beta'] = params['beta']
-            else:
-                self.params['beta'] = np.zeros((1, self.units))
+            # There is no symmetry breaking to consider here
+            # GD adapts their values to fit the corresponding feature's distribution
+            self.params['gamma'] = np.ones((1, self.units))
+            self.params['beta'] = np.zeros((1, self.units))
 
     #########################
     # FORWARD: FUN-1 -> FUN #
@@ -85,7 +73,7 @@ class Layer:
         return output, cache
 
     def activation_forward(self, input):
-        output = self.activation(input)
+        output = self.activation_fn(input)
         assert(output.shape == input.shape)
 
         cache = (input)
@@ -132,26 +120,22 @@ class Layer:
     def activation_backward(self, dinput, Y, cache):
         input = cache
 
-        if self.activation == activations.softmax:
-            doutput = activations.softmax_delta(input, Y)
+        if self.activation_fn == activation_fns.softmax:
+            doutput = activation_fns.softmax_delta(input, Y)
         else:
-            doutput = dinput * self.activation(input, delta=True)
+            doutput = dinput * self.activation_fn(input, delta=True)
         assert(doutput.shape == input.shape)
 
         return doutput
 
     def linear_backward(self, dinput, cache):
-        n_samples = dinput.shape[0]
+        m = dinput.shape[0]
         input, W, b = cache
 
-        dW = 1. / n_samples * np.dot(input.T, dinput)
+        dW = 1. / m * np.dot(input.T, dinput)
         assert(dW.shape == W.shape)
 
-        if isinstance(self.regularizer, regularizers.L2):
-            # Penalize weights (weaken connections in the computation graph)
-            dW += self.regularizer.compute_term_derivative(W, n_samples)
-
-        db = 1. / n_samples * np.sum(dinput, axis=0, keepdims=True)
+        db = 1. / m * np.sum(dinput, axis=0, keepdims=True)
         assert(db.shape == b.shape)
 
         doutput = np.dot(dinput, W.T)

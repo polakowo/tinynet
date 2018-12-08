@@ -6,44 +6,35 @@ from tqdm.auto import trange
 from src.utils import regularizers
 from src.utils import optimizers
 from src.utils import grad_check
+from src.utils import cost_fns
 
 
 class DNN:
 
     def __init__(self,
                  layers,
-                 learning_rate,
+                 optimizer,
                  num_epochs,
                  mini_batch_size=None,
-                 optimizer=None,
+                 cost_fn=cost_fns.cross_entropy,
                  regularizer=None):
 
         # A list of layer instances
         self.layers = layers
         for index, layer in enumerate(layers):
             layer.index = index
-
-        # Learning rate
-        # A key differentiator between convergence and divergence
-        # Can be a function of epoch
-        self.learning_rate = learning_rate
-
+        # Optimizations algorithm
+        self.optimizer = optimizer
         # Number of iterations of gradient descent
         self.num_epochs = num_epochs
-
         # Mini-batch gradient descent
         # Powers of two are often chosen to be the mini-batch size, e.g., 64, 128
         # Make sure that a single mini-batch fits into the CPU/GPU memory
         self.mini_batch_size = mini_batch_size
-
-        # Optimizations algorithm
-        self.optimizer = optimizer
-
+        # Cost function
+        self.cost_fn = cost_fn
         # Network-level regularization algorithm
         self.regularizer = regularizer
-        if isinstance(regularizer, regularizers.Dropout) or isinstance(regularizer, regularizers.L2):
-            for layer in layers:
-                layer.regularizer = regularizer
 
     ###############
     # INIT PARAMS #
@@ -73,44 +64,14 @@ class DNN:
     # COST #
     ########
 
-    def cross_entropy(self, output, Y, delta=False):
-        n_samples = output.shape[0]
-
-        if not delta:
-
-            if Y.shape[1] == 1:
-                # binary classification
-                with np.errstate(divide='ignore', invalid='ignore'):
-                    logprobs = Y * np.log(output) + (1 - Y) * np.log(1 - output)
-            else:
-                # multiclass classification
-                with np.errstate(divide='ignore', invalid='ignore'):
-                    logprobs = Y * np.log(output)
-
-            logprobs[logprobs == np.inf] = 0
-            logprobs = np.nan_to_num(logprobs)
-            return -1. / n_samples * np.sum(logprobs)
-
-        else:
-            if Y.shape[1] == 1:
-                with np.errstate(divide='ignore', invalid='ignore'):
-                    doutput = -Y / (output) + (1 - Y) / (1 - output)
-            else:
-                with np.errstate(divide='ignore', invalid='ignore'):
-                    doutput = -Y / output
-
-            doutput[doutput == np.inf] = 0
-            doutput = np.nan_to_num(doutput)
-            return doutput
-
     def compute_cost(self, output, Y, epsilon=1e-12):
-        n_samples = output.shape[0]
+        m = output.shape[0]
 
-        cost = self.cross_entropy(output, Y)
+        cost = self.cost_fn(output, Y, delta=False)
 
         if isinstance(self.regularizer, regularizers.L2):
             # Add L2 regularization term to the cost
-            cost += self.regularizer.compute_term(self.layers, n_samples)
+            cost += self.regularizer.compute_term(self.layers, m)
 
         return cost
 
@@ -119,7 +80,7 @@ class DNN:
     ########################
 
     def propagate_backward(self, output, Y):
-        doutput = self.cross_entropy(output, Y, delta=True)
+        doutput = self.cost_fn(output, Y, delta=True)
 
         # For each layer, calculate the gradients of the parameters
         # Move from the last layer to the first
@@ -131,11 +92,13 @@ class DNN:
     # UPDATE PARAMS #
     #################
 
-    def update_params(self):
-        for layer in self.layers:
-            for key in layer.params:
-                # Update the rule for each parameter in each layer
-                layer.params[key] = layer.params[key] - self.learning_rate * layer.grads['d' + key]
+    def update_params(self, epoch, m):
+        if isinstance(self.optimizer, optimizers.GradientDescent):
+            self.optimizer.update_params(self.layers, m, regularizer=self.regularizer)
+        if isinstance(self.optimizer, optimizers.Momentum):
+            self.optimizer.update_params(self.layers, epoch + 1, m, regularizer=self.regularizer)
+        elif isinstance(self.optimizer, optimizers.Adam):
+            self.optimizer.update_params(self.layers, epoch + 1, m, regularizer=self.regularizer)
 
     #########
     # TRAIN #
@@ -144,21 +107,21 @@ class DNN:
     def generate_mini_batches(self, X, Y, rng=None):
         if rng is None:
             pass
-        n_samples = X.shape[0]
+        m = X.shape[0]
         mini_batches = []
 
         # Step 1: Shuffle (X, Y)
-        permutation = list(rng.permutation(n_samples))
+        permutation = list(rng.permutation(m))
         shuffled_X = X[permutation, :]
         shuffled_Y = Y[permutation, :].reshape(Y.shape)
 
         # Step 2: Partition (shuffled_X, shuffled_Y)
-        num_mini_batches = math.floor(n_samples / self.mini_batch_size)
+        num_mini_batches = math.floor(m / self.mini_batch_size)
         for i in range(num_mini_batches + 1):
             from_num = i * self.mini_batch_size
             to_num = (i + 1) * self.mini_batch_size
 
-            if from_num < n_samples:
+            if from_num < m:
                 mini_batch_X = shuffled_X[from_num:to_num, :]
                 mini_batch_Y = shuffled_Y[from_num:to_num, :]
 
@@ -217,12 +180,6 @@ class DNN:
                     # Backward propagation
                     self.propagate_backward(output, mini_Y)
 
-                    # Update parameters
-                    if callable(self.learning_rate):
-                        learning_rate = self.learning_rate(epoch)
-                    else:
-                        learning_rate = self.learning_rate
-
                     # Check the backpropagation algorithm after learning some parameters
                     # Only one mini batch every epoch
                     if gradient_checking and i == 0:
@@ -238,15 +195,9 @@ class DNN:
                                 status = 'ERROR'
                             relative_errors.append((epoch, status, relative_error))
 
-                    # Delegate the task to the optimizer if set
-                    if isinstance(self.optimizer, optimizers.Momentum):
-                        t = epoch + 1
-                        self.optimizer.update_params(self.layers, learning_rate, t)
-                    elif isinstance(self.optimizer, optimizers.Adam):
-                        t = epoch + 1
-                        self.optimizer.update_params(self.layers, learning_rate, t)
-                    else:
-                        self.update_params()
+                    # Update params with an optimizer
+                    m = mini_X.shape[0]
+                    self.update_params(epoch, m)
 
         if gradient_checking:
             return costs, relative_errors
@@ -277,8 +228,10 @@ class DNN:
         # http://ufldl.stanford.edu/wiki/index.php/Gradient_checking_and_advanced_optimization
         # Important: Epsilon higher than 1e-5 likely to produce numeric instability
 
+        # Regularizers such as dropout may yield errors
+        assert(self.regularizer is None)
         for layer in self.layers:
-            assert(not isinstance(layer.regularizer, regularizers.Dropout))
+            assert(layer.regularizer is None)
             assert(layer.batch_norm is None)
 
         if train:

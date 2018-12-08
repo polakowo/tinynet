@@ -53,7 +53,7 @@ class BatchNorm:
 
     def backward(self, dinput, cache):
         input, input_norm, mu, var, gamma, beta = cache
-        n_samples = input.shape[0]
+        m = input.shape[0]
 
         input_mu = input - mu
         std_inv = 1 / np.sqrt(var + self.eps)
@@ -64,7 +64,7 @@ class BatchNorm:
             dvar * np.mean(-2. * input_mu, axis=0, keepdims=True)
 
         # Gradients
-        doutput = (dinput_norm * std_inv) + (2 * dvar * input_mu / n_samples) + (dmu / n_samples)
+        doutput = (dinput_norm * std_inv) + (2 * dvar * input_mu / m) + (dmu / m)
         assert(doutput.shape == dinput.shape)
 
         dgamma = np.sum(dinput * input_norm, axis=0, keepdims=True)
