@@ -1,4 +1,4 @@
-This repo is intended for students to learn how NNs work under the hood.
+The implementation follows a modular approach similar to the one of Keras.
 
 Features supported:
 - Batch, mini-batch and stochastic GD
