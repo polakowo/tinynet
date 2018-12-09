@@ -1,3 +1,5 @@
+This repo is intended for students to learn how NNs work under the hood.
+
 Features supported:
 - Batch, mini-batch and stochastic GD
 - Gradient Checking
