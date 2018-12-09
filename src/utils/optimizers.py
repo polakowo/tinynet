@@ -17,19 +17,21 @@ class GradientDescent:
         # Learning rate
         self.lr = lr
 
-    def update_params(self, layers, m, regularizer=None):
+    def update_params(self, layers, regularizer=None):
         for layer in layers:
-            for k in layer.params:
-                param = layer.params[k]
-                grad = layer.grads['d' + k]
+            # Does the layer have learnable parameters?
+            if layer.params is not None:
+                for k in layer.params:
+                    param = layer.params[k]
+                    grad = layer.grads['d' + k]
 
-                # Update the rule for each parameter in each layer
-                layer.params[k] -= self.lr * grad
+                    # Update the rule for each parameter in each layer
+                    layer.params[k] -= self.lr * grad
 
-                if k is 'W':
-                    if isinstance(regularizer, regularizers.L2):
-                        # Weight decay
-                        layer.params[k] -= self.lr * regularizer.compute_term_delta(param, m)
+                    if k is 'W':
+                        if isinstance(regularizer, regularizers.L2):
+                            # Weight decay
+                            layer.params[k] -= self.lr * regularizer.compute_term_delta(param)
 
 
 class Momentum:
@@ -47,39 +49,47 @@ class Momentum:
         self.beta = beta
 
     def init_params(self, layers):
+        # Timestamp of the update
+        self.t = 0
         # Initialize moment vector
         self.layer_v = []
 
         for l, layer in enumerate(layers):
-            v = {}
+            if layer.params is not None:
+                v = {}
 
-            for k in layer.params:
-                v['d' + k] = np.zeros(layer.params[k].shape)
+                for k in layer.params:
+                    v['d' + k] = np.zeros(layer.params[k].shape)
 
-            self.layer_v.append(v)
+                self.layer_v.append(v)
+            else:
+                self.layer_v.append(None)
 
-    def update_params(self, layers, t, m, regularizer=None):
+    def update_params(self, layers, regularizer=None):
+        self.t += 1
+
         # Momentum update for each parameter in a layer
         for l, layer in enumerate(layers):
-            v = self.layer_v[l]
+            if layer.params is not None:
+                v = self.layer_v[l]
 
-            for k in layer.params:
-                param = layer.params[k]
-                grad = layer.grads['d' + k]
+                for k in layer.params:
+                    param = layer.params[k]
+                    grad = layer.grads['d' + k]
 
-                # Compute velocities
-                v['d' + k] = self.beta * v['d' + k] + (1 - self.beta) * grad
+                    # Compute velocities
+                    v['d' + k] = self.beta * v['d' + k] + (1 - self.beta) * grad
 
-                # Compute bias-corrected first moment estimate
-                v_corrected = v['d' + k] / (1 - self.beta ** t)
+                    # Compute bias-corrected first moment estimate
+                    v_corrected = v['d' + k] / (1 - self.beta ** self.t)
 
-                # Update parameters
-                layer.params[k] -= self.lr * v_corrected
+                    # Update parameters
+                    layer.params[k] -= self.lr * v_corrected
 
-                if k is 'W':
-                    if isinstance(regularizer, regularizers.L2):
-                        # Weight decay
-                        layer.params[k] -= self.lr * regularizer.compute_term_delta(param, m)
+                    if k is 'W':
+                        if isinstance(regularizer, regularizers.L2):
+                            # Weight decay
+                            layer.params[k] -= self.lr * regularizer.compute_term_delta(param)
 
 
 class Adam:
@@ -102,47 +112,56 @@ class Adam:
         self.eps = eps
 
     def init_params(self, layers):
+        # Timestamp of the update
+        self.t = 0
         # Initialize 1st moment vector
         self.layer_v = []
         # Initialize 2nd moment vector
         self.layer_s = []
 
         for l, layer in enumerate(layers):
-            v = {}
-            s = {}
+            if layer.params is not None:
+                v = {}
+                s = {}
 
-            for k in layer.params:
-                v['d' + k] = np.zeros(layer.params[k].shape)
-                s['d' + k] = np.zeros(layer.params[k].shape)
+                for k in layer.params:
+                    v['d' + k] = np.zeros(layer.params[k].shape)
+                    s['d' + k] = np.zeros(layer.params[k].shape)
 
-            self.layer_v.append(v)
-            self.layer_s.append(s)
+                self.layer_v.append(v)
+                self.layer_s.append(s)
+            else:
+                self.layer_v.append(None)
+                self.layer_s.append(None)
 
-    def update_params(self, layers, t, m, regularizer=None):
+    def update_params(self, layers, regularizer=None):
+        self.t += 1
+
         # Perform Adam update on all parameters in a layer
         for l, layer in enumerate(layers):
-            v = self.layer_v[l]
-            s = self.layer_s[l]
+            if layer.params is not None:
+                v = self.layer_v[l]
+                s = self.layer_s[l]
 
-            for k in layer.params:
-                param = layer.params[k]
-                grad = layer.grads['d' + k]
+                for k in layer.params:
+                    param = layer.params[k]
+                    grad = layer.grads['d' + k]
 
-                # Update biased first moment estimate
-                v['d' + k] = self.beta1 * v['d' + k] + (1 - self.beta1) * grad
-                # Update biased second raw moment estimate
-                s['d' + k] = self.beta2 * s['d' + k] + (1 - self.beta2) * np.square(grad)
+                    # Update biased first moment estimate
+                    v['d' + k] = self.beta1 * v['d' + k] + (1 - self.beta1) * grad
+                    # Update biased second raw moment estimate
+                    s['d' + k] = self.beta2 * s['d' + k] + (1 - self.beta2) * np.square(grad)
 
-                # Compute bias-corrected first moment estimate
-                v_corrected = v['d' + k] / (1 - self.beta1 ** t)
-                # Compute bias-corrected second raw moment estimate
-                s_corrected = s['d' + k] / (1 - self.beta2 ** t)
+                    # Compute bias-corrected first moment estimate
+                    v_corrected = v['d' + k] / (1 - self.beta1 ** self.t)
+                    # Compute bias-corrected second raw moment estimate
+                    s_corrected = s['d' + k] / (1 - self.beta2 ** self.t)
 
-                # Update parameters
-                layer.params[k] -= self.lr * v_corrected / (np.sqrt(s_corrected) + self.eps)
+                    # Update parameters
+                    layer.params[k] -= self.lr * v_corrected / (np.sqrt(s_corrected) + self.eps)
 
-                if k is 'W':
-                    if isinstance(regularizer, regularizers.L2):
-                        # Weight decay
-                        # https://www.fast.ai/2018/07/02/adam-weight-decay/
-                        layer.params[k] -= self.lr * regularizer.compute_term_delta(param, m)
+                    if k is 'W':
+                        if isinstance(regularizer, regularizers.L2):
+                            # Weight decay
+                            # https://www.fast.ai/2018/07/02/adam-weight-decay/
+                            layer.params[k] -= self.lr * regularizer.compute_term_delta(param)

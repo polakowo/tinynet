@@ -20,46 +20,11 @@ class L2:
 
     def compute_term(self, layers, m):
         L2 = np.sum([np.sum(np.square(layer.params['W'])) for layer in layers])
+
+        self.cache = m
         return self._lambda / (2 * m) * L2
 
     def compute_term_delta(self, W, m):
+        m = self.cache
+
         return self._lambda / m * W
-
-
-class Dropout:
-    """
-    Dropout regularization
-
-    # Randomly shut down some neurons in each iteration
-    # With dropout, neurons become less sensitive to the activation of one other specific neuron
-    # Apply dropout both during forward and backward propagation
-    # Use dropout only during training, not during test time
-    """
-
-    def __init__(self, keep_prob, rng=None):
-        # Probability of keeping a neuron
-        self.keep_prob = keep_prob
-        # Randomize
-        if rng is None:
-            rng = np.random.RandomState(0)
-        self.rng = rng
-
-    def forward(self, input):
-        KEEP_MASK = self.rng.rand(*input.shape)
-        # Shut down each neuron of the layer with a probability of 1−keep_prob
-        KEEP_MASK = KEEP_MASK < self.keep_prob
-        output = input * KEEP_MASK
-        # Divide each dropout layer by keep_prob to keep the same expected value for the activation
-        output = output / self.keep_prob
-
-        cache = KEEP_MASK
-        return output, cache
-
-    def backward(self, dinput, cache):
-        KEEP_MASK = cache
-        # Apply the mask to shut down the same neurons as during the forward propagation
-        doutput = dinput * KEEP_MASK
-        # Scale the value of neurons that haven't been shut down
-        doutput = doutput / self.keep_prob
-
-        return doutput

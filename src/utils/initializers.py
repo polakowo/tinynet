@@ -11,7 +11,7 @@ class Xavier:
     def __init__(self, uniform=True, rng=None):
         self.uniform = uniform
         if rng is None:
-            rng = np.random
+            rng = np.random.RandomState(0)
         self.rng = rng
 
     def init_param(self, n_in, n_out):
@@ -32,7 +32,7 @@ class He:
 
     def __init__(self, rng=None):
         if rng is None:
-            rng = np.random
+            rng = np.random.RandomState(0)
         self.rng = rng
 
     def init_param(self, n_in, n_out):
