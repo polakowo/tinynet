@@ -4,8 +4,6 @@ import numpy as np
 class Xavier:
     """
     Xavier initialization
-
-    Works well for layers with tanh activation
     """
 
     def __init__(self, uniform=True, rng=None):
@@ -26,8 +24,6 @@ class Xavier:
 class He:
     """
     He et al. initialization
-
-    Works well for layers with ReLU activation
     """
 
     def __init__(self, rng=None):

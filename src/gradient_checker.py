@@ -1,7 +1,9 @@
 import numpy as np
 
-from src.utils.layers.dropout import Dropout
-from src.utils.layers.batchnorm import BatchNorm
+from src.layers.dropout import Dropout
+from src.layers.batchnorm import BatchNorm
+
+# http://ufldl.stanford.edu/wiki/index.php/Gradient_checking_and_advanced_optimization
 
 
 def roll_params(layers, param_type):
@@ -29,7 +31,7 @@ def unroll_params(theta, layers, param_type):
             for k in params:
                 vector = params[k]
                 # Extract and reshape the parameter to the original form
-                j = i + vector.shape[0] * vector.shape[1]
+                j = i + np.prod(vector.shape)
                 params[k] = theta[i:j].reshape(vector.shape)
                 i = j
 
@@ -44,11 +46,7 @@ def calculate_diff(grad_theta, grad_approx):
 
 class GradientChecker:
     """
-    Gradient Checking algorithm
-
-    Gradient checking verifies closeness between the gradients from backpropagation and
-    the numerical approximation of the gradient (computed using forward propagation)
-    http://ufldl.stanford.edu/wiki/index.php/Gradient_checking_and_advanced_optimization
+    Gradient Checking
     """
 
     def __init__(self, model, eps=1e-5):
@@ -75,8 +73,8 @@ class GradientChecker:
         grads = roll_params(layers, 'grads')
 
         # Perform one iteration on X and Y to compute and store new gradients
-        output = propagate_forward(X)
-        propagate_backward(output, Y)
+        out = propagate_forward(X)
+        propagate_backward(out, Y)
 
         # Extract new gradients and roll them into a vector
         param_theta = roll_params(layers, 'params')

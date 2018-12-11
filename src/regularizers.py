@@ -8,10 +8,6 @@ import numpy as np
 class L2:
     """
     L2 regularization
-
-    # If model complexity is a function of weights, a feature weight with a high absolute value is more complex
-    # Step 1: A regularization term is added to the cost
-    # Step 2: In the backpropagation, weights are penalized ("weight decay")
     """
 
     def __init__(self, _lambda):

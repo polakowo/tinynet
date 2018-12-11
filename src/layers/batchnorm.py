@@ -6,12 +6,7 @@ import numpy as np
 
 class BatchNorm:
     """
-    Batch normalizer
-
-    Batch Normalization is a technique to normalize the internal representation of data for faster training
-    BN performs whitening to the intermediate layers of the networks (mean=0 and variance=1)
-    Makes deeper layers more robust to changes in previous layers
-    In addition, BN works as a regularizer for the model which allows to use less dropout
+    Batch normalization layer
     """
 
     def __init__(self, eps=1e-8, decay=0.9):
@@ -21,8 +16,10 @@ class BatchNorm:
         self.ma_mu = None
         self.ma_var = None
 
-    def init_params(self, prev_units):
-        self.units = prev_units
+    def init_params(self, shape_in):
+        self.shape_in = shape_in
+        self.shape_out = shape_in
+
         self.params = {}
         self.grads = {}
 
@@ -32,8 +29,8 @@ class BatchNorm:
 
         # There is no symmetry breaking to consider here
         # GD adapts their values to fit the corresponding feature's distribution
-        self.params['gamma'] = np.ones((1, self.units))
-        self.params['beta'] = np.zeros((1, self.units))
+        self.params['gamma'] = np.ones(shape_in)
+        self.params['beta'] = np.zeros(shape_in)
 
     def forward(self, input, predict=False):
         gamma = self.params['gamma']
@@ -46,8 +43,7 @@ class BatchNorm:
             # Normalize activation output within a mini-batch
             input_norm = (input - mu) / np.sqrt(var + self.eps)
             # Scale and shift these normalized activations
-            output = gamma * input_norm + beta
-            assert(output.shape == input.shape)
+            out = gamma * input_norm + beta
 
             # Keep track of the moving averages of normalization parameters
             if self.ma_mu is None:
@@ -59,17 +55,14 @@ class BatchNorm:
             self.ma_var = self.decay * self.ma_var + (1 - self.decay) * var
 
             self.cache = (input, input_norm, mu, var)
-            return output
-
         else:
             # Fix the normalization at test time
             input_norm = (input - self.ma_mu) / np.sqrt(self.ma_var + self.eps)
-            output = gamma * input_norm + beta
-            assert(output.shape == input.shape)
+            out = gamma * input_norm + beta
 
-            return output
+        return out
 
-    def backward(self, dinput):
+    def backward(self, dout):
         gamma = self.params['gamma']
         beta = self.params['beta']
 
@@ -79,23 +72,23 @@ class BatchNorm:
         input_mu = input - mu
         std_inv = 1 / np.sqrt(var + self.eps)
 
-        dinput_norm = dinput * gamma
+        dinput_norm = dout * gamma
         dvar = -0.5 * np.sum(dinput_norm * input_mu, axis=0, keepdims=True) * std_inv ** 3
         dmu = np.sum(-dinput_norm * std_inv, axis=0, keepdims=True) + \
             dvar * np.mean(-2. * input_mu, axis=0, keepdims=True)
 
         # Gradients
-        doutput = (dinput_norm * std_inv) + (2 * dvar * input_mu / m) + (dmu / m)
-        assert(doutput.shape == dinput.shape)
+        dX = (dinput_norm * std_inv) + (2 * dvar * input_mu / m) + (dmu / m)
+        assert(dX.shape == input.shape)
 
-        dgamma = np.sum(dinput * input_norm, axis=0, keepdims=True)
+        dgamma = np.sum(dout * input_norm, axis=0, keepdims=True)
         assert(dgamma.shape == gamma.shape)
 
-        dbeta = np.sum(dinput, axis=0, keepdims=True)
+        dbeta = np.sum(dout, axis=0, keepdims=True)
         assert(dbeta.shape == beta.shape)
 
         self.grads['dgamma'] = dgamma
         self.grads['dbeta'] = dbeta
 
         self.cache = None
-        return doutput
+        return dX

@@ -1,9 +1,12 @@
 import numpy as np
 
-from src.utils import initializers
+from src import initializers
 
 
 class Dense:
+    """
+    Fully-connected layer
+    """
 
     def __init__(self,
                  units,
@@ -19,7 +22,11 @@ class Dense:
         # Initializer for biases
         self.bias_initializer = bias_initializer
 
-    def init_params(self, prev_units):
+    def init_params(self, shape_in):
+        units_in = shape_in[1]
+        self.shape_in = shape_in
+        self.shape_out = (1, self.units)
+
         self.params = {}
         self.grads = {}
 
@@ -27,44 +34,44 @@ class Dense:
         # Random initialization is preferred to break symmetry
         if self.weight_initializer is None:
             weight_initializer = initializers.Xavier()
-            self.params['W'] = weight_initializer.init_param(prev_units, self.units)
+            self.params['W'] = weight_initializer.init_param(units_in, self.units)
         else:
-            self.params['W'] = self.weight_initializer.init_param(prev_units, self.units)
+            self.params['W'] = self.weight_initializer.init_param(units_in, self.units)
 
         if self.bias_initializer is None:
             self.params['b'] = np.zeros((1, self.units))
         else:
             self.params['b'] = self.bias_initializer.init_param(1, self.units)
 
-    def forward(self, input, predict=False):
+    def forward(self, X, predict=False):
         W = self.params['W']
         b = self.params['b']
 
-        output = np.dot(input, W) + b
-        assert(output.shape == (input.shape[0], W.shape[1]))
+        out = np.dot(X, W) + b
+        assert(out.shape == (X.shape[0], W.shape[1]))
 
         if not predict:
-            self.cache = input
-        return output
+            self.cache = X
+        return out
 
-    def backward(self, dinput):
+    def backward(self, dout):
         W = self.params['W']
         b = self.params['b']
 
-        m = dinput.shape[0]
-        input = self.cache
+        m = dout.shape[0]
+        X = self.cache
 
-        dW = 1. / m * np.dot(input.T, dinput)
+        dX = np.dot(dout, W.T)
+        assert(dX.shape == X.shape)
+
+        dW = 1. / m * np.dot(X.T, dout)
         assert(dW.shape == W.shape)
 
-        db = 1. / m * np.sum(dinput, axis=0, keepdims=True)
+        db = 1. / m * np.sum(dout, axis=0, keepdims=True)
         assert(db.shape == b.shape)
-
-        doutput = np.dot(dinput, W.T)
-        assert(doutput.shape == input.shape)
 
         self.grads['dW'] = dW
         self.grads['db'] = db
 
         self.cache = None
-        return doutput
+        return dX

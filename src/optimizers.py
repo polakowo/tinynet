@@ -1,6 +1,6 @@
 import numpy as np
 
-from src.utils import regularizers
+from src import regularizers
 
 # Optimization algorithms ‘denoise’ the data and bring it closer to the original function
 # They help in navigating plateaus where learning is slow
@@ -9,8 +9,6 @@ from src.utils import regularizers
 class GradientDescent:
     """
     Vanilla gradient descent
-
-    GD iteratively tweaks it’s parameters to minimize a cost function
     """
 
     def __init__(self, lr):
@@ -36,10 +34,7 @@ class GradientDescent:
 
 class Momentum:
     """
-    Gradient descent with Momentum
-
-    Momentum takes past gradients into account to smooth out the steps of gradient descent
-    It can be applied with batch, mini-batch and stochastic gradient descent
+    Gradient descent with momentum
     """
 
     def __init__(self, lr, beta=0.9):
@@ -94,12 +89,7 @@ class Momentum:
 
 class Adam:
     """
-    Gradient descent with Adam
-    https://arxiv.org/pdf/1412.6980.pdf
-
-    Adam combines ideas from RMSProp and Momentum
-    The algorithm calculates an exponential moving average of the gradient and the squared gradient
-    It's one of the most effective optimization algorithms
+    Adaptive Moment Estimation (Adam)
     """
 
     def __init__(self, lr, beta1=0.9, beta2=0.999, eps=1e-8):

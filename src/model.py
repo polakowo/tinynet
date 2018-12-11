@@ -3,13 +3,13 @@ import math
 
 from tqdm.auto import trange
 
-from src.utils import layers
-from src.utils import regularizers
-from src.utils import optimizers
-from src.utils import cost_fns
+from src import layers
+from src import regularizers
+from src import optimizers
+from src import cost_fns
 
 
-class DNN:
+class Sequential:
 
     def __init__(self):
         self.layers = []
@@ -22,14 +22,15 @@ class DNN:
     ###########
 
     def configure(self,
-                  input_shape,
+                  shape_in,
                   optimizer,
                   cost_fn=cost_fns.cross_entropy,
                   regularizer=None):
         """
         Initialize layer and optimization params
         """
-        self.input_shape = input_shape
+        shape_in = (1, *shape_in[1:])
+        self.shape_in = shape_in
         # Optimization algorithm
         self.optimizer = optimizer
         # Cost function
@@ -38,13 +39,11 @@ class DNN:
         self.regularizer = regularizer
 
         for index, layer in enumerate(self.layers):
-            if index == 0:
-                prev_n = input_shape[1]
-            else:
-                prev_n = self.layers[index - 1].units
+            if index > 0:
+                shape_in = self.layers[index - 1].shape_out
 
             # Layers know their shapes only at runtime
-            layer.init_params(prev_n)
+            layer.init_params(shape_in)
 
         # Initialize the optimizer
         if isinstance(self.optimizer, optimizers.Momentum):
@@ -57,20 +56,20 @@ class DNN:
     #######################
 
     def propagate_forward(self, X, predict=False):
-        output = X
+        out = X
         for l, layer in enumerate(self.layers):
-            output = layer.forward(output, predict=predict)
+            out = layer.forward(out, predict=predict)
 
-        return output
+        return out
 
     ########
     # COST #
     ########
 
-    def compute_cost(self, output, Y, epsilon=1e-12):
-        m = output.shape[0]
+    def compute_cost(self, out, Y, epsilon=1e-12):
+        m = out.shape[0]
 
-        cost = self.cost_fn(output, Y, delta=False)
+        cost = self.cost_fn(out, Y, delta=False)
 
         if isinstance(self.regularizer, regularizers.L2):
             # Add L2 regularization term to the cost
@@ -82,16 +81,16 @@ class DNN:
     # BACKWARD PROPAGATION #
     ########################
 
-    def propagate_backward(self, output, Y):
-        doutput = self.cost_fn(output, Y, delta=True)
+    def propagate_backward(self, out, Y):
+        dX = self.cost_fn(out, Y, delta=True)
 
         # Calculate and store gradients in each layer with parameters
         # Move from the last layer to the first
         for layer in reversed(self.layers):
             if isinstance(layer, layers.activation.Activation):
-                doutput = layer.backward(doutput, Y)
+                dX = layer.backward(dX, Y)
             else:
-                doutput = layer.backward(doutput)
+                dX = layer.backward(dX)
 
     #################
     # UPDATE PARAMS #
@@ -163,14 +162,14 @@ class DNN:
                     X_batch, Y_batch = batch
 
                     # Forward propagation
-                    output = self.propagate_forward(X_batch)
+                    out = self.propagate_forward(X_batch)
 
                     # Compute cost
-                    cost = self.compute_cost(output, Y_batch)
+                    cost = self.compute_cost(out, Y_batch)
                     costs.append(cost)
 
                     # Backward propagation
-                    self.propagate_backward(output, Y_batch)
+                    self.propagate_backward(out, Y_batch)
 
                     # Update params with an optimizer
                     self.update_params()
@@ -183,6 +182,4 @@ class DNN:
 
     def predict(self, X):
         # Propagate forward with the parameters learned previously
-        output = self.propagate_forward(X, predict=True)
-
-        return output
+        return self.propagate_forward(X, predict=True)

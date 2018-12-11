@@ -1,19 +1,19 @@
 import numpy as np
 
 
-def cross_entropy(output, Y, delta=False):
-    m = output.shape[0]
+def cross_entropy(out, Y, delta=False):
+    m = out.shape[0]
 
     if not delta:
 
         if Y.shape[1] == 1:
             # binary classification
             with np.errstate(divide='ignore', invalid='ignore'):
-                logprobs = Y * np.log(output) + (1 - Y) * np.log(1 - output)
+                logprobs = Y * np.log(out) + (1 - Y) * np.log(1 - out)
         else:
             # multiclass classification
             with np.errstate(divide='ignore', invalid='ignore'):
-                logprobs = Y * np.log(output)
+                logprobs = Y * np.log(out)
 
         logprobs[logprobs == np.inf] = 0
         logprobs = np.nan_to_num(logprobs)
@@ -22,11 +22,11 @@ def cross_entropy(output, Y, delta=False):
     else:
         if Y.shape[1] == 1:
             with np.errstate(divide='ignore', invalid='ignore'):
-                doutput = -Y / (output) + (1 - Y) / (1 - output)
+                dX = -Y / (out) + (1 - Y) / (1 - out)
         else:
             with np.errstate(divide='ignore', invalid='ignore'):
-                doutput = -Y / output
+                dX = -Y / out
 
-        doutput[doutput == np.inf] = 0
-        doutput = np.nan_to_num(doutput)
-        return doutput
+        dX[dX == np.inf] = 0
+        dX = np.nan_to_num(dX)
+        return dX
