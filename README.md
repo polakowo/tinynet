@@ -1,3 +1,5 @@
+Made with Keras design in mind.
+
 Features:
 - Batch, mini-batch and stochastic GD
 - Layers:
