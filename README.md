@@ -1,20 +1,17 @@
-The implementation follows a modular approach similar to the one of Keras.
-
-Features supported:
+Features:
 - Batch, mini-batch and stochastic GD
-- Gradient Checking
-- Batch normalization
+- Layers:
+  - Dense
+  - Convolutional (2D)
+  - Pooling (2D)
 - Regularizers:
   - L2
   - Dropout
 - Optimizers:
   - Momentum
   - Adam
-- Activations:
-  - ReLU
-  - tanh
-  - sigmoid
-  - softmax
+- Batch normalization
+- Gradient Checking
 
 Notebooks:
 
