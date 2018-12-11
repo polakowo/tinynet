@@ -3,7 +3,7 @@ import numpy as np
 
 class Flatten:
     """
-    Flatten previous layer
+    Flatten input
     """
 
     def __init__(self):
