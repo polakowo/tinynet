@@ -9,9 +9,9 @@ class Activation:
     def __init__(self, activation_fn):
         self.activation_fn = activation_fn
 
-    def init_params(self, shape_in):
-        self.shape_in = shape_in
-        self.shape_out = shape_in
+    def init_params(self, in_shape):
+        self.in_shape = in_shape
+        self.out_shape = in_shape
 
         self.params = None
         self.grads = None

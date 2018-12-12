@@ -12,30 +12,30 @@ class Conv2D:
     Convolutional layer (2D)
     """
 
-    def __init__(self, filters, kernel_size, stride=1, pad=0):
-        self.filters = filters
-        self.kernel_size = kernel_size
+    def __init__(self, out_channels, field, stride=1, pad=0):
+        self.out_channels = out_channels
+        self.field = field
         self.stride = stride
         self.pad = pad
 
-    def init_params(self, shape_in):
-        # Input volume in format NC
-        channels = shape_in[1]
-        h_in = shape_in[2]
-        w_in = shape_in[3]
-        self.shape_in = shape_in
+    def init_params(self, in_shape):
+        # Input volume
+        in_channels = in_shape[1]
+        in_height = in_shape[2]
+        in_width = in_shape[3]
+        self.in_shape = in_shape
 
         # Output volume
-        h_out = int((h_in - self.kernel_size[0] + 2 * self.pad) / self.stride) + 1
-        w_out = int((w_in - self.kernel_size[1] + 2 * self.pad) / self.stride) + 1
-        self.shape_out = (1, self.filters, h_out, w_out)
+        out_height = int((in_height - self.field[0] + 2 * self.pad) / self.stride) + 1
+        out_width = int((in_width - self.field[1] + 2 * self.pad) / self.stride) + 1
+        self.out_shape = (1, self.out_channels, out_height, out_width)
 
         # Learnable parameters
         self.params = {}
         self.grads = {}
         np.random.seed(1)
-        self.params['W'] = np.random.randn(self.filters, channels, self.kernel_size[0], self.kernel_size[1])
-        self.params['b'] = np.random.randn(self.filters, 1)
+        self.params['W'] = np.random.randn(self.out_channels, in_channels, self.field[0], self.field[1])
+        self.params['b'] = np.random.randn(self.out_channels, 1)
 
     def forward(self, X, predict=False):
         W = self.params['W']
@@ -44,15 +44,15 @@ class Conv2D:
         m = X.shape[0]
 
         X_col = im2col_indices(X,
-                               self.kernel_size[0],
-                               self.kernel_size[1],
+                               self.field[0],
+                               self.field[1],
                                padding=self.pad,
                                stride=self.stride)
-        W_col = W.reshape(self.filters, -1)
+        W_col = W.reshape(self.out_channels, -1)
 
         out = W_col @ X_col + b
-        _, _, h_out, w_out = self.shape_out
-        out = out.reshape(self.filters, h_out, w_out, m)
+        _, _, out_height, out_width = self.out_shape
+        out = out.reshape(self.out_channels, out_height, out_width, m)
         out = out.transpose(3, 0, 1, 2)
 
         if not predict:
@@ -65,20 +65,20 @@ class Conv2D:
         b = self.params['b']
 
         db = np.sum(dout, axis=(0, 2, 3))
-        db = db.reshape(self.filters, -1)
+        db = db.reshape(self.out_channels, -1)
         assert(db.shape == b.shape)
 
-        dout_reshaped = dout.transpose(1, 2, 3, 0).reshape(self.filters, -1)
+        dout_reshaped = dout.transpose(1, 2, 3, 0).reshape(self.out_channels, -1)
         dW = dout_reshaped @ X_col.T
         dW = dW.reshape(W.shape)
         assert(dW.shape == W.shape)
 
-        W_reshape = W.reshape(self.filters, -1)
+        W_reshape = W.reshape(self.out_channels, -1)
         dX_col = W_reshape.T @ dout_reshaped
         dX = col2im_indices(dX_col,
                             X.shape,
-                            self.kernel_size[0],
-                            self.kernel_size[1],
+                            self.field[0],
+                            self.field[1],
                             padding=self.pad,
                             stride=self.stride)
         assert(dX.shape == X.shape)

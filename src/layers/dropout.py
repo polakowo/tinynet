@@ -14,9 +14,9 @@ class Dropout:
             rng = np.random.RandomState(0)
         self.rng = rng
 
-    def init_params(self, shape_in):
-        self.shape_in = shape_in
-        self.shape_out = shape_in
+    def init_params(self, in_shape):
+        self.in_shape = in_shape
+        self.out_shape = in_shape
 
         self.params = None
         self.grads = None

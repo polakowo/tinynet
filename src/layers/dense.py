@@ -9,12 +9,12 @@ class Dense:
     """
 
     def __init__(self,
-                 units,
+                 out_units,
                  weight_initializer=None,
                  bias_initializer=None):
 
-        # The number of units in the layer
-        self.units = units
+        # The number of out_units in the layer
+        self.out_units = out_units
 
         # Initializer for weights
         self.weight_initializer = weight_initializer
@@ -22,10 +22,10 @@ class Dense:
         # Initializer for biases
         self.bias_initializer = bias_initializer
 
-    def init_params(self, shape_in):
-        units_in = shape_in[1]
-        self.shape_in = shape_in
-        self.shape_out = (1, self.units)
+    def init_params(self, in_shape):
+        in_units = in_shape[1]
+        self.in_shape = in_shape
+        self.out_shape = (1, self.out_units)
 
         self.params = {}
         self.grads = {}
@@ -34,14 +34,14 @@ class Dense:
         # Random initialization is preferred to break symmetry
         if self.weight_initializer is None:
             weight_initializer = initializers.Xavier()
-            self.params['W'] = weight_initializer.init_param(units_in, self.units)
+            self.params['W'] = weight_initializer.init_param(in_units, self.out_units)
         else:
-            self.params['W'] = self.weight_initializer.init_param(units_in, self.units)
+            self.params['W'] = self.weight_initializer.init_param(in_units, self.out_units)
 
         if self.bias_initializer is None:
-            self.params['b'] = np.zeros((1, self.units))
+            self.params['b'] = np.zeros((1, self.out_units))
         else:
-            self.params['b'] = self.bias_initializer.init_param(1, self.units)
+            self.params['b'] = self.bias_initializer.init_param(1, self.out_units)
 
     def forward(self, X, predict=False):
         W = self.params['W']

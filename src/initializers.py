@@ -12,13 +12,13 @@ class Xavier:
             rng = np.random.RandomState(0)
         self.rng = rng
 
-    def init_param(self, n_in, n_out):
+    def init_param(self, in_units, out_units):
         if self.uniform:
             # uniform distribution
-            return self.rng.randn(n_in, n_out) * np.sqrt(6. / (n_in + n_out))
+            return self.rng.randn(in_units, out_units) * np.sqrt(6. / (in_units + out_units))
         else:
             # normal distribution
-            return self.rng.randn(n_in, n_out) * np.sqrt(2. / (n_in + n_out))
+            return self.rng.randn(in_units, out_units) * np.sqrt(2. / (in_units + out_units))
 
 
 class He:
@@ -31,5 +31,5 @@ class He:
             rng = np.random.RandomState(0)
         self.rng = rng
 
-    def init_param(self, n_in, n_out):
-        return self.rng.randn(n_in, n_out) * np.sqrt(2. / n_in)
+    def init_param(self, in_units, out_units):
+        return self.rng.randn(in_units, out_units) * np.sqrt(2. / in_units)

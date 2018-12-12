@@ -9,9 +9,9 @@ class Flatten:
     def __init__(self):
         pass
 
-    def init_params(self, shape_in):
-        self.shape_in = shape_in
-        self.shape_out = (1, np.prod(shape_in[1:]))
+    def init_params(self, in_shape):
+        self.in_shape = in_shape
+        self.out_shape = (1, np.prod(in_shape[1:]))
 
         self.params = None
         self.grads = None

@@ -16,9 +16,9 @@ class BatchNorm:
         self.ma_mu = None
         self.ma_var = None
 
-    def init_params(self, shape_in):
-        self.shape_in = shape_in
-        self.shape_out = shape_in
+    def init_params(self, in_shape):
+        self.in_shape = in_shape
+        self.out_shape = in_shape
 
         self.params = {}
         self.grads = {}
@@ -29,8 +29,8 @@ class BatchNorm:
 
         # There is no symmetry breaking to consider here
         # GD adapts their values to fit the corresponding feature's distribution
-        self.params['gamma'] = np.ones(shape_in)
-        self.params['beta'] = np.zeros(shape_in)
+        self.params['gamma'] = np.ones(in_shape)
+        self.params['beta'] = np.zeros(in_shape)
 
     def forward(self, input, predict=False):
         gamma = self.params['gamma']

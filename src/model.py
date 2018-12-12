@@ -22,15 +22,15 @@ class Sequential:
     ###########
 
     def configure(self,
-                  shape_in,
+                  in_shape,
                   optimizer,
                   cost_fn=cost_fns.cross_entropy,
                   regularizer=None):
         """
         Initialize layer and optimization params
         """
-        shape_in = (1, *shape_in[1:])
-        self.shape_in = shape_in
+        in_shape = (1, *in_shape[1:])
+        self.in_shape = in_shape
         # Optimization algorithm
         self.optimizer = optimizer
         # Cost function
@@ -40,10 +40,10 @@ class Sequential:
 
         for index, layer in enumerate(self.layers):
             if index > 0:
-                shape_in = self.layers[index - 1].shape_out
+                in_shape = self.layers[index - 1].out_shape
 
             # Layers know their shapes only at runtime
-            layer.init_params(shape_in)
+            layer.init_params(in_shape)
 
         # Initialize the optimizer
         if isinstance(self.optimizer, optimizers.Momentum):

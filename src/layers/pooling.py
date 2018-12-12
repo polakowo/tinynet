@@ -34,33 +34,33 @@ class Pool2D:
     Pooling layer (2D)
     """
 
-    def __init__(self, pool_size, stride=1, pad=0, mode='max'):
-        self.pool_size = pool_size
+    def __init__(self, field, stride=1, pad=0, mode='max'):
+        self.field = field
         self.stride = stride
         self.pad = pad
         self.mode = mode
 
-    def init_params(self, shape_in):
-        # Input volume in format NC
-        channels = shape_in[1]
-        h_in = shape_in[2]
-        w_in = shape_in[3]
-        self.shape_in = shape_in
+    def init_params(self, in_shape):
+        # Input volume
+        in_channels = in_shape[1]
+        in_height = in_shape[2]
+        in_width = in_shape[3]
+        self.in_shape = in_shape
 
         # Output volume
-        h_out = int((h_in - self.pool_size[0] + 2 * self.pad) / self.stride) + 1
-        w_out = int((w_in - self.pool_size[1] + 2 * self.pad) / self.stride) + 1
-        self.shape_out = (1, channels, h_out, w_out)
+        out_height = int((in_height - self.field[0] + 2 * self.pad) / self.stride) + 1
+        out_width = int((in_width - self.field[1] + 2 * self.pad) / self.stride) + 1
+        self.out_shape = (1, in_channels, out_height, out_width)
 
         self.params = None
         self.grads = None
 
     def forward(self, X, predict=False):
-        m, channels, h_in, w_in = X.shape
-        X_reshaped = X.reshape(m * channels, 1, h_in, w_in)
+        m, in_channels, in_height, in_width = X.shape
+        X_reshaped = X.reshape(m * in_channels, 1, in_height, in_width)
         X_col = im2col_indices(X_reshaped,
-                               self.pool_size[0],
-                               self.pool_size[1],
+                               self.field[0],
+                               self.field[1],
                                padding=self.pad,
                                stride=self.stride)
 
@@ -69,8 +69,8 @@ class Pool2D:
         elif self.mode == 'avg':
             out, pool_cache = avgpool(X_col)
 
-        _, _, h_out, w_out = self.shape_out
-        out = out.reshape(h_out, w_out, m, channels)
+        _, _, out_height, out_width = self.out_shape
+        out = out.reshape(out_height, out_width, m, in_channels)
         out = out.transpose(2, 3, 0, 1)
 
         if not predict:
@@ -88,11 +88,11 @@ class Pool2D:
         elif self.mode == 'avg':
             dX = davgpool(dX_col, dout_col, pool_cache)
 
-        m, channels, h_in, w_in = X.shape
+        m, in_channels, in_height, in_width = X.shape
         dX = col2im_indices(dX_col,
-                            (m * channels, 1, h_in, w_in),
-                            self.pool_size[0],
-                            self.pool_size[1],
+                            (m * in_channels, 1, in_height, in_width),
+                            self.field[0],
+                            self.field[1],
                             padding=self.pad,
                             stride=self.stride)
         dX = dX.reshape(X.shape)
