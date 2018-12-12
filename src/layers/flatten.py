@@ -16,18 +16,18 @@ class Flatten:
         self.params = None
         self.grads = None
 
-    def forward(self, input, predict=False):
-        output = input.reshape(input.shape[0], -1)
+    def forward(self, X, predict=False):
+        out = X.reshape(X.shape[0], -1)
 
         if not predict:
-            self.cache = input
-        return output
+            self.cache = X
+        return out
 
     def backward(self, dout):
-        input = self.cache
+        X = self.cache
 
-        dX = input.reshape(input.shape)
-        assert(dX.shape == input.shape)
+        dX = dout.reshape(X.shape)
+        assert(dX.shape == X.shape)
 
         self.cache = None
         return dX

@@ -92,16 +92,16 @@ class GradientChecker:
             theta_plus[i] = theta_plus[i] + self.eps
             # Calculate new cost
             unroll_params(theta_plus, layers, 'params')
-            output_plus = propagate_forward(X, predict=True)
-            cost_plus = compute_cost(output_plus, Y)
+            out_plus = propagate_forward(X, predict=True)
+            cost_plus = compute_cost(out_plus, Y)
 
             # Subtract epsilon from the number
             theta_minus = np.copy(param_theta)
             theta_minus[i] = theta_minus[i] - self.eps
             # Calculate new cost
             unroll_params(theta_minus, layers, 'params')
-            output_minus = propagate_forward(X, predict=True)
-            cost_minus = compute_cost(output_minus, Y)
+            out_minus = propagate_forward(X, predict=True)
+            cost_minus = compute_cost(out_minus, Y)
 
             # Approximate the gradient, error is eps^2
             grad_approx[i] = (cost_plus - cost_minus) / (2 * self.eps)
