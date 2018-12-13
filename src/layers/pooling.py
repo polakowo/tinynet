@@ -47,7 +47,7 @@ class Pool2D:
             self.dpool_fn = davgpool
 
     def init_params(self, in_shape):
-        # Input volume
+        # Input volume (channels first)
         in_channels = in_shape[1]
         in_height = in_shape[2]
         in_width = in_shape[3]

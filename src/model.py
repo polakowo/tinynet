@@ -21,7 +21,7 @@ class Sequential:
     # COMPILE #
     ###########
 
-    def configure(self, in_shape, optimizer, cost_fn=cost_fns.cross_entropy, regularizer=None):
+    def configure(self, in_shape, optimizer, cost_fn, regularizer=None):
         """
         Initialize layer and optimization params
         """
