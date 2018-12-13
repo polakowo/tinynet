@@ -3,7 +3,7 @@ import numpy as np
 
 class Flatten:
     """
-    Flatten input
+    Flatten layer
     """
 
     def __init__(self):
@@ -11,7 +11,7 @@ class Flatten:
 
     def init_params(self, in_shape):
         self.in_shape = in_shape
-        self.out_shape = (1, np.prod(in_shape[1:]))
+        self.out_shape = (None, np.prod(in_shape[1:]))
 
         self.params = None
         self.grads = None

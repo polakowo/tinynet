@@ -38,7 +38,13 @@ class Pool2D:
         self.field = field
         self.stride = stride
         self.pad = pad
-        self.mode = mode
+
+        if mode == 'max':
+            self.pool_fn = maxpool
+            self.dpool_fn = dmaxpool
+        elif mode == 'avg':
+            self.pool_fn = avgpool
+            self.dpool_fn = davgpool
 
     def init_params(self, in_shape):
         # Input volume
@@ -50,7 +56,7 @@ class Pool2D:
         # Output volume
         out_height = int((in_height - self.field[0] + 2 * self.pad) / self.stride) + 1
         out_width = int((in_width - self.field[1] + 2 * self.pad) / self.stride) + 1
-        self.out_shape = (1, in_channels, out_height, out_width)
+        self.out_shape = (None, in_channels, out_height, out_width)
 
         self.params = None
         self.grads = None
@@ -61,13 +67,10 @@ class Pool2D:
         X_col = im2col_indices(X_reshaped,
                                self.field[0],
                                self.field[1],
-                               padding=self.pad,
+                               pad=self.pad,
                                stride=self.stride)
 
-        if self.mode == 'max':
-            out, pool_cache = maxpool(X_col)
-        elif self.mode == 'avg':
-            out, pool_cache = avgpool(X_col)
+        out, pool_cache = self.pool_fn(X_col)
 
         _, _, out_height, out_width = self.out_shape
         out = out.reshape(out_height, out_width, m, in_channels)
@@ -83,17 +86,14 @@ class Pool2D:
         dX_col = np.zeros_like(X_col)
         dout_col = dout.transpose(2, 3, 0, 1).ravel()
 
-        if self.mode == 'max':
-            dX = dmaxpool(dX_col, dout_col, pool_cache)
-        elif self.mode == 'avg':
-            dX = davgpool(dX_col, dout_col, pool_cache)
+        dX = self.dpool_fn(dX_col, dout_col, pool_cache)
 
         m, in_channels, in_height, in_width = X.shape
         dX = col2im_indices(dX_col,
                             (m * in_channels, 1, in_height, in_width),
                             self.field[0],
                             self.field[1],
-                            padding=self.pad,
+                            pad=self.pad,
                             stride=self.stride)
         dX = dX.reshape(X.shape)
         assert(dX.shape == X.shape)

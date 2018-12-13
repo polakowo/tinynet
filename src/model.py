@@ -1,7 +1,7 @@
 import numpy as np
-import math
 
-from tqdm.auto import trange
+from tqdm.auto import tqdm
+from tabulate import tabulate
 
 from src import layers
 from src import regularizers
@@ -21,21 +21,13 @@ class Sequential:
     # COMPILE #
     ###########
 
-    def configure(self,
-                  in_shape,
-                  optimizer,
-                  cost_fn=cost_fns.cross_entropy,
-                  regularizer=None):
+    def configure(self, in_shape, optimizer, cost_fn=cost_fns.cross_entropy, regularizer=None):
         """
         Initialize layer and optimization params
         """
-        in_shape = (1, *in_shape[1:])
-        self.in_shape = in_shape
-        # Optimization algorithm
+        in_shape = (None, *in_shape[1:])
         self.optimizer = optimizer
-        # Cost function
         self.cost_fn = cost_fn
-        # Network-level regularization algorithm
         self.regularizer = regularizer
 
         for index, layer in enumerate(self.layers):
@@ -50,6 +42,21 @@ class Sequential:
             self.optimizer.init_params(self.layers)
         elif isinstance(self.optimizer, optimizers.Adam):
             self.optimizer.init_params(self.layers)
+
+    def summary(self):
+        """
+        Get summary on layer shapes and parameters
+        """
+        rows = []
+        for layer in self.layers:
+            name = layer.__class__.__name__
+            out_shape = layer.out_shape
+            if layer.params is not None:
+                num_params = sum([np.prod(p.shape) for k, p in layer.params.items()])
+            else:
+                num_params = 0
+            rows.append((name, out_shape, num_params))
+        print(tabulate(rows, headers=['Layer class', 'Output shape', 'Params']))
 
     #######################
     # FORWARD PROPAGATION #
@@ -110,7 +117,7 @@ class Sequential:
 
     def generate_batches(self, X, Y, batch_size, rng=None):
         if rng is None:
-            pass
+            rng = np.random
         m = X.shape[0]
         batches = []
 
@@ -120,17 +127,12 @@ class Sequential:
         shuffled_Y = Y[permutation, :].reshape(Y.shape)
 
         # Step 2: Partition (shuffled_X, shuffled_Y)
-        num_batches = math.floor(m / batch_size)
-        for i in range(num_batches + 1):
-            from_num = i * batch_size
-            to_num = (i + 1) * batch_size
+        for i in range(0, m, batch_size):
+            batch_X = shuffled_X[i:i + batch_size, :]
+            batch_Y = shuffled_Y[i:i + batch_size, :]
 
-            if from_num < m:
-                batch_X = shuffled_X[from_num:to_num, :]
-                batch_Y = shuffled_Y[from_num:to_num, :]
-
-                batch = (batch_X, batch_Y)
-                batches.append(batch)
+            batch = (batch_X, batch_Y)
+            batches.append(batch)
 
         return batches
 
@@ -141,16 +143,15 @@ class Sequential:
 
         costs = []
         # Progress information is displayed and updated dynamically in the console
-        with trange(nb_epoch) as pbar:
+        batches = self.generate_batches(X, Y, batch_size)
+        with tqdm(total=nb_epoch * len(batches)) as pbar:
 
-            for epoch in pbar:
+            for epoch in range(nb_epoch):
                 # Diversify outputs by epoch but make them predictable
                 rng = np.random.RandomState(epoch)
 
                 if batch_size is not None:
                     # Divide the dataset into mini-batches based on their size
-                    # Powers of two are often chosen to be the mini-batch size, e.g., 64, 128
-                    # Make sure that a single mini-batch fits into the CPU/GPU memory
                     # We increment the seed to reshuffle differently the dataset after each epoch
                     batches = self.generate_batches(X, Y, batch_size, rng=rng)
                 else:
@@ -173,6 +174,8 @@ class Sequential:
 
                     # Update params with an optimizer
                     self.update_params()
+
+                    pbar.update(1)
 
         return costs
 

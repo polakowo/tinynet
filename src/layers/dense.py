@@ -8,40 +8,34 @@ class Dense:
     Fully-connected layer
     """
 
-    def __init__(self,
-                 out_units,
-                 weight_initializer=None,
-                 bias_initializer=None):
-
-        # The number of out_units in the layer
+    def __init__(self, out_units, weight_initializer=None, bias_initializer=None):
         self.out_units = out_units
-
-        # Initializer for weights
         self.weight_initializer = weight_initializer
-
-        # Initializer for biases
         self.bias_initializer = bias_initializer
 
     def init_params(self, in_shape):
         in_units = in_shape[1]
         self.in_shape = in_shape
-        self.out_shape = (1, self.out_units)
+        self.out_shape = (None, self.out_units)
 
         self.params = {}
         self.grads = {}
 
+        # Initialize parameters
         # Poor initialization can lead to vanishing/exploding gradients
-        # Random initialization is preferred to break symmetry
+        # Weights
+        shape = (in_units, self.out_units)
         if self.weight_initializer is None:
-            weight_initializer = initializers.Xavier()
-            self.params['W'] = weight_initializer.init_param(in_units, self.out_units)
+            weight_initializer = initializers.He()
+            self.params['W'] = weight_initializer.init_param(shape, in_units, self.out_units)
         else:
-            self.params['W'] = self.weight_initializer.init_param(in_units, self.out_units)
-
+            self.params['W'] = self.weight_initializer.init_param(shape, in_units, self.out_units)
+        # Biases
+        shape = (1, self.out_units)
         if self.bias_initializer is None:
-            self.params['b'] = np.zeros((1, self.out_units))
+            self.params['b'] = np.zeros(shape)
         else:
-            self.params['b'] = self.bias_initializer.init_param(1, self.out_units)
+            self.params['b'] = self.bias_initializer.init_param(shape, in_units, self.out_units)
 
     def forward(self, X, predict=False):
         W = self.params['W']
