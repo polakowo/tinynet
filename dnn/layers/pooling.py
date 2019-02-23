@@ -1,7 +1,7 @@
 import numpy as np
 
-from src.im2col import im2col_indices
-from src.im2col import col2im_indices
+from dnn.im2col import im2col_indices
+from dnn.im2col import col2im_indices
 
 # Adopted from
 # https://github.com/wiseodd/hipsternet/blob/master/hipsternet/layer.py

@@ -1,6 +1,6 @@
 import numpy as np
 
-from src import initializers
+from dnn import initializers
 
 
 class Dense:

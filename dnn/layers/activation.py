@@ -1,4 +1,4 @@
-from src import activation_fns
+from dnn import activation_fns
 
 
 class Activation:

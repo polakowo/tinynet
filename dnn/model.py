@@ -3,10 +3,10 @@ import numpy as np
 from tqdm.auto import tqdm
 from tabulate import tabulate
 
-from src import layers
-from src import regularizers
-from src import optimizers
-from src import cost_fns
+from dnn import layers
+from dnn import regularizers
+from dnn import optimizers
+from dnn import cost_fns
 
 
 class Sequential:

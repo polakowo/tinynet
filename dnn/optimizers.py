@@ -1,6 +1,6 @@
 import numpy as np
 
-from src import regularizers
+from dnn import regularizers
 
 # Optimization algorithms ‘denoise’ the data and bring it closer to the original function
 # They help in navigating plateaus where learning is slow

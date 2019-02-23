@@ -1,7 +1,7 @@
 import numpy as np
 
-from src.layers.dropout import Dropout
-from src.layers.batchnorm import BatchNorm
+from dnn.layers.dropout import Dropout
+from dnn.layers.batchnorm import BatchNorm
 
 # http://ufldl.stanford.edu/wiki/index.php/Gradient_checking_and_advanced_optimization
 
