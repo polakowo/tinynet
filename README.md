@@ -1,4 +1,4 @@
-This code aims to help with understanding of the basic building blocks of neural networks. 
+This code aims to help with understanding the basic building blocks of neural networks. 
 
 Features:
 - Batch, mini-batch and stochastic GD
