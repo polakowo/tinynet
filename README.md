@@ -1,4 +1,4 @@
-Made with Keras design in mind.
+This code aims to help with understanding of the basic building blocks of neural networks. 
 
 Features:
 - Batch, mini-batch and stochastic GD
