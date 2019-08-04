@@ -1,4 +1,4 @@
-This package is a tiny DL framework designed in a modular, Keras-like, fashion. The aim is to help students with understanding of basic building blocks of neural networks and their coordination.
+This package is a tiny DL framework designed in a modular, Keras-like, fashion. The aim is to provide understanding of basic building blocks of neural networks and their coordination.
 
 Features:
 - Batch, mini-batch and stochastic GD
