@@ -1,4 +1,4 @@
-TinyNet is a tiny DL framework designed in a modular, Keras-like, fashion. The aim is to provide understanding of basic building blocks of neural networks and their coordination.
+TinyNet is a tiny neural network developed and vectorized with NumPy, and designed in a modular fashion. The aim is to provide students with an understanding of basic building blocks of neural networks and their coordination.
 
 Features:
 - Batch, mini-batch and stochastic GD
