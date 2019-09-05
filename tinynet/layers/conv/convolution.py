@@ -1,18 +1,17 @@
 import numpy as np
 
-from dnn.im2col import im2col_indices
-from dnn.im2col import col2im_indices
+from tinynet.layers import Layer
+from tinynet import initializers
 
-from dnn import initializers
+from tinynet.layers.conv.im2col import im2col_indices
+from tinynet.layers.conv.im2col import col2im_indices
 
 # Adopted from
 # https://github.com/wiseodd/hipsternet/blob/master/hipsternet/layer.py
 
 
-class Conv2D:
-    """
-    Convolutional layer (2D)
-    """
+class Conv2D(Layer):
+    """Convolutional layer (2D)"""
 
     def __init__(self, out_channels, field, stride=1, pad=0, weight_initializer=None, bias_initializer=None):
         self.out_channels = out_channels
@@ -45,15 +44,15 @@ class Conv2D:
         shape = (self.out_channels, in_channels, self.field[0], self.field[1])
         if self.weight_initializer is None:
             weight_initializer = initializers.He()
-            self.params['W'] = weight_initializer.init_param(shape, in_units, out_units)
+            self.params['W'] = weight_initializer.init_params(shape, in_units, out_units)
         else:
-            self.params['W'] = self.weight_initializer.init_param(shape, in_units, out_units)
+            self.params['W'] = self.weight_initializer.init_params(shape, in_units, out_units)
         # Biases
         shape = (self.out_channels, 1)
         if self.bias_initializer is None:
             self.params['b'] = np.zeros(shape)
         else:
-            self.params['b'] = self.bias_initializer.init_param(shape, in_units, out_units)
+            self.params['b'] = self.bias_initializer.init_params(shape, in_units, out_units)
 
     def forward(self, X, predict=False):
         W = self.params['W']

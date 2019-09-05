@@ -1,13 +1,13 @@
 import numpy as np
 
+from tinynet.layers import Layer
+
 # https://wiseodd.github.io/techblog/2016/07/04/batchnorm/
 # https://kratzert.github.io/2016/02/12/understanding-the-gradient-flow-through-the-batch-normalization-layer.html
 
 
-class BatchNorm:
-    """
-    Batch normalization layer
-    """
+class BatchNorm(Layer):
+    """Batch normalization layer"""
 
     def __init__(self, eps=1e-8, decay=0.9):
         self.eps = eps

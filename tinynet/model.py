@@ -3,21 +3,17 @@ import numpy as np
 from tqdm.auto import tqdm
 from tabulate import tabulate
 
-from dnn import layers
-from dnn import regularizers
-from dnn import optimizers
-from dnn import cost_fns
+from tinynet import layers
+from tinynet import regularizers
+from tinynet import optimizers
+from tinynet import cost_funcs
 
 
-class Sequential:
+class TinyNet:
+    """The basic sequential model of TinyNet"""
 
-    def __init__(self):
-        self.layers = []
-
-    def add(self, layer):
-        """Add a new layer to the NN."""
-        self.layers.append(layer)
-
+    def __init__(self, layers):
+        self.layers = layers
 
     def configure(self, in_shape, optimizer, cost_fn, regularizer=None):
         """Initialize the layers and the optimization params."""
@@ -30,74 +26,66 @@ class Sequential:
             if index > 0:
                 in_shape = self.layers[index - 1].out_shape
 
-            # Layers know their shapes only at runtime
+            # Layers know their shapes only after defining all layers
+            # That's why we need an explicit configure method.
             layer.init_params(in_shape)
 
         # Initialize the optimizer
-        if isinstance(self.optimizer, optimizers.Momentum):
-            self.optimizer.init_params(self.layers)
-        elif isinstance(self.optimizer, optimizers.Adam):
-            self.optimizer.init_params(self.layers)
+        self.optimizer.init_params(self.layers)
 
-
-    def summary(self):
-        """Print the summary on layer shapes and parameters."""
+    def print_summary(self):
+        """Print the summary of the layers' shapes and parameters."""
         rows = []
         for layer in self.layers:
             name = layer.__class__.__name__
+            # Get the shape of the layer
             out_shape = layer.out_shape
             if layer.params is not None:
+                # Get the number of parameters in the layer
                 num_params = sum([np.prod(p.shape) for k, p in layer.params.items()])
             else:
                 num_params = 0
             rows.append((name, out_shape, num_params))
         print(tabulate(rows, headers=['Layer class', 'Output shape', 'Params']))
 
-
     def propagate_forward(self, X, predict=False):
         """Propagate through the layers forwards."""
         out = X
+        # The output tensor of the previous layer becomes the input tensor of the next layer
         for l, layer in enumerate(self.layers):
             out = layer.forward(out, predict=predict)
 
         return out
 
-
     def compute_cost(self, out, Y, epsilon=1e-12):
         """Compute the cost."""
         m = out.shape[0]
 
-        cost = self.cost_fn(out, Y, delta=False)
+        cost = self.cost_fn(out, Y, grad=False)
 
+        # Some cost calculations depend upon a regularizer
         if isinstance(self.regularizer, regularizers.L2):
             # Add L2 regularization term to the cost
             cost += self.regularizer.compute_term(self.layers, m)
 
         return cost
 
-
     def propagate_backward(self, out, Y):
         """Propagate through the layers backwards."""
-        dX = self.cost_fn(out, Y, delta=True)
+        dX = self.cost_fn(out, Y, grad=True)
 
         # Calculate and store gradients in each layer with parameters
-        # Move from the last layer to the first
+        # Move from the last layer backwards to the first layer
         for layer in reversed(self.layers):
             if isinstance(layer, layers.activation.Activation):
+                # Activation functions such as softmax require Y to be provided as well
                 dX = layer.backward(dX, Y)
             else:
                 dX = layer.backward(dX)
 
-
     def update_params(self):
         """Update the model parameters based on the optimization method."""
-        if isinstance(self.optimizer, optimizers.GradientDescent):
-            self.optimizer.update_params(self.layers, regularizer=self.regularizer)
-        if isinstance(self.optimizer, optimizers.Momentum):
-            self.optimizer.update_params(self.layers, regularizer=self.regularizer)
-        elif isinstance(self.optimizer, optimizers.Adam):
-            self.optimizer.update_params(self.layers, regularizer=self.regularizer)
-
+        self.optimizer.update_params(self.layers, regularizer=self.regularizer)
 
     def generate_batches(self, X, Y, batch_size, rng=None):
         """Divide the dataset into batches."""
@@ -121,14 +109,23 @@ class Sequential:
 
         return batches
 
-    def fit(self, X, Y, nb_epoch, batch_size=None):
-        """Train a multi-layer neural network."""
+    def fit(self, X, Y, num_epochs, batch_size=None):
+        """Train a multi-layer neural network.
+        
+        X and Y should be both tensors of rank at least 2.
+        """
         costs = []
+        
+        # Get the number of butches for progress bar
+        if batch_size is None:
+            num_iters = num_epochs
+        else:
+            num_batches = len(self.generate_batches(X, Y, batch_size))
+            num_iters = num_epochs * num_batches
+            
         # Progress information is displayed and updated dynamically in the console
-        batches = self.generate_batches(X, Y, batch_size)
-        with tqdm(total=nb_epoch * len(batches)) as pbar:
-
-            for epoch in range(nb_epoch):
+        with tqdm(total=num_iters) as pbar:
+            for epoch in range(num_epochs):
                 # Diversify outputs by epoch but make them predictable
                 rng = np.random.RandomState(epoch)
                 if batch_size is not None:
@@ -154,7 +151,17 @@ class Sequential:
 
         return costs
 
-
-    def predict(self, X):
+    def predict(self, X, batch_size=None):
         """Propagate forward with the parameters learned previously."""
-        return self.propagate_forward(X, predict=True)
+        if batch_size is None:
+            # Predict on the whole bulk (must fit into RAM)
+            return self.propagate_forward(X, predict=True)
+        else:
+            # Split into mini-batches and predict
+            preds = []
+            m = X.shape[0]
+            for i in tqdm(range(0, m, batch_size)):
+                batch = X[i:i + batch_size, :]
+                preds.append(self.propagate_forward(batch, predict=True))
+            return np.vstack(preds)
+                

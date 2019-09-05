@@ -1,12 +1,11 @@
 import numpy as np
 
-from dnn import initializers
+from tinynet.layers import Layer
+from tinynet import initializers
 
 
-class Dense:
-    """
-    Fully-connected layer
-    """
+class Dense(Layer):
+    """Fully-connected layer (FC)"""
 
     def __init__(self, out_units, weight_initializer=None, bias_initializer=None):
         self.out_units = out_units
@@ -27,15 +26,15 @@ class Dense:
         shape = (in_units, self.out_units)
         if self.weight_initializer is None:
             weight_initializer = initializers.He()
-            self.params['W'] = weight_initializer.init_param(shape, in_units, self.out_units)
+            self.params['W'] = weight_initializer.init_params(shape, in_units, self.out_units)
         else:
-            self.params['W'] = self.weight_initializer.init_param(shape, in_units, self.out_units)
+            self.params['W'] = self.weight_initializer.init_params(shape, in_units, self.out_units)
         # Biases
         shape = (1, self.out_units)
         if self.bias_initializer is None:
             self.params['b'] = np.zeros(shape)
         else:
-            self.params['b'] = self.bias_initializer.init_param(shape, in_units, self.out_units)
+            self.params['b'] = self.bias_initializer.init_params(shape, in_units, self.out_units)
 
     def forward(self, X, predict=False):
         W = self.params['W']

@@ -1,10 +1,9 @@
 import numpy as np
 
+from tinynet.layers import Layer
 
-class Dropout:
-    """
-    Dropout regularization layer
-    """
+class Dropout(Layer):
+    """Dropout regularization layer"""
 
     def __init__(self, keep_prob, rng=None):
         # Probability of keeping a neuron

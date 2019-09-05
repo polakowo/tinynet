@@ -1,10 +1,9 @@
-from dnn import activation_fns
+from tinynet import activation_funcs
+from tinynet.layers import Layer
 
 
-class Activation:
-    """
-    Activation layer
-    """
+class Activation(Layer):
+    """Activation layer"""
 
     def __init__(self, activation_fn):
         self.activation_fn = activation_fn
@@ -26,11 +25,11 @@ class Activation:
     def backward(self, dout, Y):
         X = self.cache
 
-        if self.activation_fn == activation_fns.softmax:
-            dX = activation_fns.softmax_delta(X, Y)
+        if self.activation_fn == activation_funcs.softmax:
+            dX = activation_funcs.softmax_delta(X, Y)
             assert(dX.shape == X.shape)
         else:
-            dX = dout * self.activation_fn(X, delta=True)
+            dX = dout * self.activation_fn(X, grad=True)
             assert(dX.shape == X.shape)
 
         self.cache = None

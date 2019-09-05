@@ -1,19 +1,39 @@
+from abc import ABC, abstractmethod
 import numpy as np
 
-from dnn import regularizers
+from tinynet import regularizers
 
 # Optimization algorithms ‘denoise’ the data and bring it closer to the original function
 # They help in navigating plateaus where learning is slow
 
 
-class GradientDescent:
-    """
-    Vanilla gradient descent
-    """
+class Optimizer(ABC):
+    """Base optimizer class"""
+
+    def __init__(self, *args, **kwargs):
+        """Define hyperparameters of the optimization algorithm."""
+        pass
+
+    @abstractmethod
+    def init_params(self, layers, *args, **kwargs):
+        """Initialize the parameters of the optimization algorithm for each layer."""
+        pass
+
+    @abstractmethod
+    def update_params(self, layers, regularizer=None, *args, **kwargs):
+        """Update the parameters for each layer."""
+        pass
+
+
+class GradientDescent(Optimizer):
+    """Simple gradient descent"""
 
     def __init__(self, lr):
         # Learning rate
         self.lr = lr
+
+    def init_params(self, layers):
+        pass
 
     def update_params(self, layers, regularizer=None):
         for layer in layers:
@@ -32,10 +52,8 @@ class GradientDescent:
                             layer.params[k] -= self.lr * regularizer.compute_term_delta(param)
 
 
-class Momentum:
-    """
-    Gradient descent with momentum
-    """
+class Momentum(Optimizer):
+    """Gradient descent with momentum"""
 
     def __init__(self, lr, beta=0.9):
         # Learning rate
@@ -87,10 +105,8 @@ class Momentum:
                             layer.params[k] -= self.lr * regularizer.compute_term_delta(param)
 
 
-class Adam:
-    """
-    Adaptive Moment Estimation (Adam)
-    """
+class Adam(Optimizer):
+    """Adaptive Moment Estimation (Adam)"""
 
     def __init__(self, lr, beta1=0.9, beta2=0.999, eps=1e-8):
         # Learning rate

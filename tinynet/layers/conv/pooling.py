@@ -1,7 +1,9 @@
 import numpy as np
 
-from dnn.im2col import im2col_indices
-from dnn.im2col import col2im_indices
+from tinynet.layers import Layer
+
+from tinynet.layers.conv.im2col import im2col_indices
+from tinynet.layers.conv.im2col import col2im_indices
 
 # Adopted from
 # https://github.com/wiseodd/hipsternet/blob/master/hipsternet/layer.py
@@ -29,10 +31,8 @@ def davgpool(dX_col, dout_col, pool_cache):
     return dX_col
 
 
-class Pool2D:
-    """
-    Pooling layer (2D)
-    """
+class Pool2D(Layer):
+    """Pooling layer (2D)"""
 
     def __init__(self, field, stride=1, pad=0, mode='max'):
         self.field = field

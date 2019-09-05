@@ -6,9 +6,7 @@ import numpy as np
 
 
 class L2:
-    """
-    L2 regularization
-    """
+    """L2 regularization"""
 
     def __init__(self, _lambda):
         # Encourages the mean of the weights toward 0, with a normal (bell-shaped or Gaussian) distribution

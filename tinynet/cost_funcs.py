@@ -1,11 +1,11 @@
 import numpy as np
 
 
-def binary_crossentropy(out, Y, delta=False):
-    # Binary classification
+def binary_crossentropy(out, Y, grad=False):
+    """Cross-entropy loss for binary classification."""
     m = out.shape[0]
 
-    if not delta:
+    if not grad:
         with np.errstate(divide='ignore', invalid='ignore'):
             logprobs = Y * np.log(out) + (1 - Y) * np.log(1 - out)
 
@@ -21,11 +21,11 @@ def binary_crossentropy(out, Y, delta=False):
             return dX
 
 
-def categorical_crossentropy(out, Y, delta=False):
-    # Multiclass classification
+def categorical_crossentropy(out, Y, grad=False):
+    """Cross-entropy loss for multiclass classification."""
     m = out.shape[0]
 
-    if not delta:
+    if not grad:
         with np.errstate(divide='ignore', invalid='ignore'):
             logprobs = Y * np.log(out)
 

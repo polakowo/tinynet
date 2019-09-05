@@ -1,10 +1,9 @@
 import numpy as np
 
+from tinynet.layers import Layer
 
-class Flatten:
-    """
-    Flatten layer
-    """
+class Flatten(Layer):
+    """Flatten layer"""
 
     def __init__(self):
         pass

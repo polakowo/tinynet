@@ -27,9 +27,7 @@ def get_im2col_indices(x_shape, field_height, field_width, pad=1, stride=1):
 
 
 def im2col_indices(x, field_height, field_width, pad=1, stride=1):
-    """ 
-    An implementation of im2col based on some fancy indexing 
-    """
+    """An implementation of im2col based on some fancy indexing"""
     # Zero-pad the input
     x_padded = np.pad(x, ((0, 0), (0, 0), (pad, pad), (pad, pad)), mode='constant')
 
@@ -41,9 +39,7 @@ def im2col_indices(x, field_height, field_width, pad=1, stride=1):
 
 
 def col2im_indices(cols, x_shape, field_height=3, field_width=3, pad=1, stride=1):
-    """ 
-    An implementation of col2im based on fancy indexing and np.add.at 
-    """
+    """An implementation of col2im based on fancy indexing and np.add.at"""
     m, c, h, w = x_shape
     h_padded, w_padded = h + 2 * pad, w + 2 * pad
     x_padded = np.zeros((m, c, h_padded, w_padded), dtype=cols.dtype)
